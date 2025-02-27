@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "mkhl.direnv",
+        "mechatroner.rainbow-csv",
+        "biomejs.biome",
+        "bradlc.vscode-tailwindcss"
+    ]
+}

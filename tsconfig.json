@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "target": "ES2024",
+        "module": "NodeNext",
+        "moduleResolution": "nodenext",
+        "esModuleInterop": true,
+        "strict": true,
+        "exactOptionalPropertyTypes": true,
+        "skipLibCheck": true,
+        "plugins": [
+            {
+                "name": "@effect/language-service"
+            }
+        ],
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "dist",
+        "declaration": true,
+        "sourceMap": true,
+        "lib": ["ESNext"],
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "downlevelIteration": true,
+        "types": ["bun-types"]
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules", "dist"]
+}
