@@ -13,12 +13,18 @@ export interface KankaConfig {
      * The API key for authentication
      */
     readonly apiKey: string;
+
+    /**
+     * Whether to enable schema validation (default: true)
+     * Set to false in production for better performance
+     */
+    readonly enableValidation?: boolean;
 }
 
 /**
  * Context tag for the Kanka API configuration
  */
-export class KankaConfigTag extends Context.Tag("KankaConfig")<KankaConfigTag, KankaConfig>() {}
+export class KankaConfigTag extends Context.Tag("KankaConfig")<KankaConfigTag, KankaConfig>() { }
 
 /**
  * Default configuration for the Kanka API
@@ -26,6 +32,7 @@ export class KankaConfigTag extends Context.Tag("KankaConfig")<KankaConfigTag, K
 export const DEFAULT_CONFIG: KankaConfig = {
     baseUrl: "https://app.kanka.io/api/1.0",
     apiKey: "",
+    enableValidation: true,
 };
 
 /**
@@ -45,7 +52,7 @@ export const getConfig = KankaConfigTag.pipe(Effect.map((config) => config));
 /**
  * Create a configuration layer from environment variables
  *
- * Uses KANKA_API_KEY and KANKA_BASE_URL if available
+ * Uses KANKA_API_KEY, KANKA_BASE_URL, and KANKA_ENABLE_VALIDATION if available
  */
 export const configFromEnv = Layer.effect(
     KankaConfigTag,
@@ -61,6 +68,17 @@ export const configFromEnv = Layer.effect(
                 ? process.env.KANKA_BASE_URL || DEFAULT_CONFIG.baseUrl
                 : DEFAULT_CONFIG.baseUrl;
 
+        // Parse enableValidation from environment variable
+        let enableValidation = DEFAULT_CONFIG.enableValidation ?? true;
+        if (typeof process !== "undefined" && process.env.KANKA_ENABLE_VALIDATION !== undefined) {
+            enableValidation = process.env.KANKA_ENABLE_VALIDATION === "true";
+        }
+
+        // Disable validation in production by default
+        if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
+            enableValidation = process.env.KANKA_ENABLE_VALIDATION === "true";
+        }
+
         if (!apiKey) {
             yield* Effect.logWarning("No KANKA_API_KEY environment variable found");
         }
@@ -68,6 +86,7 @@ export const configFromEnv = Layer.effect(
         return {
             apiKey,
             baseUrl,
+            enableValidation,
         };
     })
 );

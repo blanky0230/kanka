@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import { LastSync, LastSyncSchema } from "./last-sync.js";
 
 /**
  * Common pagination metadata
@@ -43,7 +44,7 @@ export const PaginationLinksSchema = Schema.Struct({
 /**
  * Common paginated response wrapper
  */
-export interface PaginatedResponse<T> {
+export interface PaginatedResponse<T> extends LastSync {
     data: T[];
     links: PaginationLinks;
     meta: PaginationMeta;
@@ -54,6 +55,7 @@ export const PaginatedResponseSchema = <T>(dataSchema: Schema.Schema<T, unknown>
         data: Schema.Array(dataSchema),
         links: PaginationLinksSchema,
         meta: PaginationMetaSchema,
+        sync: Schema.String,
     });
 
 /**
