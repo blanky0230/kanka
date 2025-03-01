@@ -1,4 +1,5 @@
-import { Config, Context, Effect, Layer } from "effect";
+import { Cause, Context, Effect, Layer } from "effect";
+import { Campaign } from "./api/campaigns/types.js";
 
 /**
  * Configuration for the Kanka API client
@@ -13,12 +14,6 @@ export interface KankaConfig {
      * The API key for authentication
      */
     readonly apiKey: string;
-
-    /**
-     * Whether to enable schema validation (default: true)
-     * Set to false in production for better performance
-     */
-    readonly enableValidation?: boolean;
 }
 
 /**
@@ -32,7 +27,6 @@ export class KankaConfigTag extends Context.Tag("KankaConfig")<KankaConfigTag, K
 export const DEFAULT_CONFIG: KankaConfig = {
     baseUrl: "https://app.kanka.io/api/1.0",
     apiKey: "",
-    enableValidation: true,
 };
 
 /**
@@ -54,7 +48,7 @@ export const getConfig = KankaConfigTag.pipe(Effect.map((config) => config));
  *
  * Uses KANKA_API_KEY, KANKA_BASE_URL, and KANKA_ENABLE_VALIDATION if available
  */
-export const configFromEnv = Layer.effect(
+export const ConfigFromEnv = Layer.effect(
     KankaConfigTag,
     Effect.gen(function* (_) {
         // Use environment variables if available
@@ -68,16 +62,6 @@ export const configFromEnv = Layer.effect(
                 ? process.env.KANKA_BASE_URL || DEFAULT_CONFIG.baseUrl
                 : DEFAULT_CONFIG.baseUrl;
 
-        // Parse enableValidation from environment variable
-        let enableValidation = DEFAULT_CONFIG.enableValidation ?? true;
-        if (typeof process !== "undefined" && process.env.KANKA_ENABLE_VALIDATION !== undefined) {
-            enableValidation = process.env.KANKA_ENABLE_VALIDATION === "true";
-        }
-
-        // Disable validation in production by default
-        if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
-            enableValidation = process.env.KANKA_ENABLE_VALIDATION === "true";
-        }
 
         if (!apiKey) {
             yield* Effect.logWarning("No KANKA_API_KEY environment variable found");
@@ -86,7 +70,25 @@ export const configFromEnv = Layer.effect(
         return {
             apiKey,
             baseUrl,
-            enableValidation,
         };
     })
 );
+
+export const ConfigForCampaign = (campaign: Pick<Campaign, "urls">) => Layer.effect(
+    KankaConfigTag,
+    Effect.gen(function* () {
+        const current = yield* KankaConfigTag;
+        if (!current) {
+            return yield* Effect.fail({ message: "RootAPI not set" })
+        }
+
+        if (!campaign.urls) {
+            return yield* Effect.fail({ message: "campaign has not urls?!" });
+        }
+
+        return {
+            ...current,
+            baseUrl: campaign.urls?.api ?? DEFAULT_CONFIG.baseUrl
+        }
+    })
+)

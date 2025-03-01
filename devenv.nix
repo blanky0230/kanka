@@ -1,46 +1,37 @@
 { pkgs, lib, config, inputs, ... }:
 
 {
-  # https://devenv.sh/basics/
-  env.GREET = "devenv";
-  env.API_INFO_FILE = ".apiinfo";
+  # Project name
+  name = "mf-mocomation";
 
-  # https://devenv.sh/packages/
-  packages = with pkgs; [ git jq bun biome just ];
-  dotenv.enable = true;
+  # Environment variables
+  env = { NODE_ENV = "development"; };
 
-  # https://devenv.sh/languages/
+  # Required packages
+  packages = with pkgs; [ bun biome git ];
+
+  # Enable TypeScript language support
   languages.typescript.enable = true;
-  # https://devenv.sh/processes/
-  # processes.cargo-watch.exec = "cargo-watch";
 
-  # https://devenv.sh/services/
-  # services.postgres.enable = true;
+  # Helpful scripts
+  scripts = { };
 
-  # https://devenv.sh/scripts/
-  scripts.startup.exec = ''
-    just setup-env
-    echo "\n\nREADY!\n\n"
-  '';
-
+  # Welcome message and helpful information
   enterShell = ''
-    startup
+    echo "🚀 Kanka API Client development environment activated"
+    echo "Available commands:"
+    echo "  - bun: JavaScript/TypeScript runtime"
+    echo "  - tsc: TypeScript compiler"
+    git --version
   '';
 
-  # https://devenv.sh/tasks/
-  # tasks = {
-  #   "myproj:setup".exec = "mytool build";
-  #   "devenv:enterShell".after = [ "myproj:setup" ];
-  # };
-
-  # https://devenv.sh/tests/
+  # Tests
   enterTest = ''
     echo "Running tests"
     git --version | grep --color=auto "${pkgs.git.version}"
+    bun --version
+    tsc --version
   '';
-
-  # https://devenv.sh/git-hooks/
-  # git-hooks.hooks.shellcheck.enable = true;
 
   # See full reference at https://devenv.sh/reference/options/
 }

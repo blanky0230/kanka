@@ -454,7 +454,7 @@ Effect.runPromise(createCharacterWithValidation({
     getCharacter(id),
     Effect.catchAll((error) => {
       if (error instanceof KankaNetworkError) {
-        return Effect.fail(new KankaError({
+        return Effect.fail(new Error({
           message: `Network error: ${error.message}`,
           cause: error,
         }));

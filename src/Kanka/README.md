@@ -110,7 +110,7 @@ Effect.runPromise(
 ```typescript
 import { Effect } from "effect";
 import { makeConfig, getCampaigns } from "./Kanka";
-import { KankaError, KankaApiError, KankaAuthenticationError } from "./Kanka";
+import { Error, KankaApiError, KankaAuthenticationError } from "./Kanka";
 
 const program = Effect.gen(function* (_) {
   const campaigns = yield* getCampaigns();
