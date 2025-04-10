@@ -1,6 +1,7 @@
 import { Url, UrlParams } from "@effect/platform";
 import { Context, Effect, Layer } from "effect";
 import { KankaConfigTag } from "../config.js";
+import { IllegalArgumentException } from "effect/Cause";
 
 /**
  * HTTP method types
@@ -24,11 +25,11 @@ export class HttpService extends Context.Tag("HttpService")<
 
 export class ClientServices extends Context.Tag("ClientServices")<ClientServices,
     {
-        get: (path: string, params: ParamsType) => Effect.Effect<unknown>,
-        del: (path: string, params: ParamsType) => Effect.Effect<unknown>,
-        post: (path: string, body: unknown, params: ParamsType) => Effect.Effect<unknown>
-        put: (path: string, body: unknown, params: ParamsType) => Effect.Effect<unknown>,
-        patch: (path: string, body: unknown, params: ParamsType) => Effect.Effect<unknown>
+        get: (path: string, params: ParamsType) => Effect.Effect<unknown, IllegalArgumentException | Effect.Effect<never, unknown>>,
+        del: (path: string, params: ParamsType) => Effect.Effect<unknown, IllegalArgumentException | Effect.Effect<never, unknown>>,
+        post: (path: string, body: unknown, params: ParamsType) => Effect.Effect<unknown, IllegalArgumentException | Effect.Effect<never, unknown>>
+        put: (path: string, body: unknown, params: ParamsType) => Effect.Effect<unknown, IllegalArgumentException | Effect.Effect<never, unknown>>,
+        patch: (path: string, body: unknown, params: ParamsType) => Effect.Effect<unknown, IllegalArgumentException | Effect.Effect<never, unknown>>
     }>() { }
 
 export const ClientServicesLive = Layer.effect(ClientServices, Effect.gen(function* () {
@@ -62,11 +63,11 @@ export const ClientServicesLive = Layer.effect(ClientServices, Effect.gen(functi
     });
 
     return {
-        get: (path: string, params: ParamsType) => Effect.either(request(path, { method: "GET", params, body: undefined })),
-        del: (path: string, params: ParamsType) => Effect.either(request(path, { method: "DELETE", params, body: undefined })),
-        post: (path: string, body: unknown, params: ParamsType) => Effect.either(request(path, { method: "POST", params, body })),
-        put: (path: string, body: unknown, params: ParamsType) => Effect.either(request(path, { method: "PUT", params, body })),
-        patch: (path: string, body: unknown, params: ParamsType) => Effect.either(request(path, { method: "PATCH", params, body })),
+        get: (path: string, params: ParamsType) => request(path, { method: "GET", params, body: undefined }),
+        del: (path: string, params: ParamsType) => request(path, { method: "DELETE", params, body: undefined }),
+        post: (path: string, body: unknown, params: ParamsType) => request(path, { method: "POST", params, body }),
+        put: (path: string, body: unknown, params: ParamsType) => request(path, { method: "PUT", params, body }),
+        patch: (path: string, body: unknown, params: ParamsType) => request(path, { method: "PATCH", params, body }),
     };
 
 }))
