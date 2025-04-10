@@ -10,6 +10,7 @@ import { Context, Effect, Layer, pipe } from 'effect';
 import { BunContext } from '@effect/platform-bun';
 import { ConfigFromEnv } from '../config.js';
 import { CampaignsApiLive, CampaignsApiService } from '../api/campaigns/campaigns.js';
+import { EntitiesApiLive, EntitiesApiService } from '../api/entities/entities.js';
 import { ClientServices, ClientServicesLive, HttpService } from '../api/client.js';
 import { Campaign } from '../api/campaigns/types.js';
 import inquirer from 'inquirer';
@@ -53,7 +54,7 @@ command
             const httpLayer = Layer.succeed(HttpService, httpService);
             const configLayer = ConfigFromEnv;
 
-            // 3. Setup the direct dependencies needed for CampaignsApiLive
+            // 3. Setup the direct dependencies needed for API layers
             const baseLayer = Layer.merge(httpLayer, configLayer);
 
             // 4. Create a client service layer that depends on the base layer
@@ -62,13 +63,22 @@ command
                 Layer.provide(baseLayer)
             );
 
-            // 5. Create the campaign API layer that depends on the client layer
+            // 5. Create the campaigns API layer that depends on the client layer
             const campaignsLayer = pipe(
                 CampaignsApiLive,
                 Layer.provide(clientLayer)
             );
 
-            // 6. Create a program that uses the CampaignsAPI to select campaigns
+            // 6. Create the entities API layer that depends on the client layer
+            const entitiesLayer = pipe(
+                EntitiesApiLive,
+                Layer.provide(clientLayer)
+            );
+
+            // 7. Merge API layers into a composite layer
+            const apiLayer = Layer.merge(campaignsLayer, entitiesLayer);
+
+            // 8. Create a program that uses the API services to interact with Kanka
             const program = async () => {
                 try {
                     console.log("🔄 Loading your Kanka campaigns...");
@@ -77,7 +87,7 @@ command
                     const campaign = await Effect.runPromise(
                         pipe(
                             selectCampaign(),
-                            Effect.provide(campaignsLayer)
+                            Effect.provide(apiLayer)
                         ) as Effect.Effect<Campaign | null, never, never>
                     );
 
@@ -88,7 +98,7 @@ command
                         await Effect.runPromise(
                             pipe(
                                 campaignDashboard(campaign),
-                                Effect.provide(campaignsLayer)
+                                Effect.provide(apiLayer)
                             ) as Effect.Effect<void, never, never>
                         );
                     } else {

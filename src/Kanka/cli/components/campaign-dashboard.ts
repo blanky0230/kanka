@@ -10,6 +10,8 @@ import inquirer from 'inquirer';
 import { Campaign } from '../../api/campaigns/types.js';
 import { CampaignById, CampaignsApiService } from '../../api/campaigns/campaigns.js';
 import { displayMembersList } from './members-list.js';
+import { displayEntityMenu } from './entities-list.js';
+import { displayCampaignSettings } from './campaign-settings.js';
 
 // Placeholder service for entities, members, and settings
 // These will be implemented in separate files later
@@ -23,25 +25,25 @@ export class DashboardServices extends Context.Tag("DashboardServices")<
 >() { }
 
 // Define placeholder implementations
-const displayEntityMenu = (campaign: Campaign): Effect.Effect<void, never, never> => {
-    return Effect.gen(function* (_) {
-        console.log("Entity menu is not yet implemented");
-        yield* Effect.promise(() =>
-            inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
-        );
-    });
-};
 
-const displayMembersView = (campaign: Campaign): Effect.Effect<void, never, never> => {
-    return displayMembersList(campaign);
-};
-
-const displaySettings = (campaign: Campaign): Effect.Effect<void, never, never> => {
+const displayMembersView = (campaign: Campaign) => displayMembersList(campaign);
+const displaySettings = (campaign: Campaign) => {
     return Effect.gen(function* (_) {
-        console.log("Settings view is not yet implemented");
-        yield* Effect.promise(() =>
-            inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
-        );
+        try {
+            // Explicitly cast to any to handle the type mismatch
+            yield* Effect.orDie(displayCampaignSettings(campaign) as any);
+        } catch (error) {
+            // Log the error
+            yield* Effect.logError(`Error in campaign settings: ${error}`);
+
+            // Display error to user
+            console.log(`An error occurred while displaying settings: ${error}`);
+
+            // Wait for user acknowledgment
+            yield* Effect.promise(() =>
+                inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
+            );
+        }
     });
 };
 
@@ -90,7 +92,7 @@ export const campaignDashboard = (campaign: Campaign): Effect.Effect<void, any, 
                     const updatedCampaign = {
                         ...refreshedData.data
                     };
-                    
+
                     // If the updated campaign doesn't have members but the original did, use the original members
                     if (campaign.members && campaign.members.size > 0 &&
                         (!updatedCampaign.members || updatedCampaign.members.size === 0)) {
@@ -99,14 +101,14 @@ export const campaignDashboard = (campaign: Campaign): Effect.Effect<void, any, 
                             ...updatedCampaign,
                             members: campaign.members
                         };
-                        
+
                         // Replace the campaign reference entirely
                         Object.assign(campaign, campaignWithMembers);
                     } else {
                         // Use the refreshed data as is
                         Object.assign(campaign, updatedCampaign);
                     }
-                    
+
                     yield* Effect.logInfo('Campaign data refreshed');
                 }
             }
