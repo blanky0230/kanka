@@ -5,24 +5,24 @@
  * Framework principles applied: STAKEHOLDER_PRIORITY, CONTEXT_DISCOVERY
  */
 
-import { Context, Effect } from 'effect';
-import inquirer from 'inquirer';
-import { Campaign } from '../../api/campaigns/types.js';
-import { CampaignById, CampaignsApiService } from '../../api/campaigns/campaigns.js';
-import { displayMembersList } from './members-list.js';
-import { displayEntityMenu } from './entities-list.js';
-import { displayCampaignSettings } from './campaign-settings.js';
+import { Context, Effect } from "effect";
+import inquirer from "inquirer";
+import { CampaignById, CampaignsApiService } from "../../api/campaigns/campaigns.js";
+import { Campaign } from "../../api/campaigns/types.js";
+import { displayCampaignSettings } from "./campaign-settings.js";
+import { displayEntityMenu } from "./entities-list.js";
+import { displayMembersList } from "./members-list.js";
 
 // Placeholder service for entities, members, and settings
 // These will be implemented in separate files later
 export class DashboardServices extends Context.Tag("DashboardServices")<
     DashboardServices,
     {
-        displayEntityMenu: (campaign: Campaign) => Effect.Effect<void, never, never>,
-        displayMembersView: (campaign: Campaign) => Effect.Effect<void, never, never>,
-        displaySettings: (campaign: Campaign) => Effect.Effect<void, never, never>
+        displayEntityMenu: (campaign: Campaign) => Effect.Effect<void, never, never>;
+        displayMembersView: (campaign: Campaign) => Effect.Effect<void, never, never>;
+        displaySettings: (campaign: Campaign) => Effect.Effect<void, never, never>;
     }
->() { }
+>() {}
 
 // Define placeholder implementations
 
@@ -30,8 +30,8 @@ const displayMembersView = (campaign: Campaign) => displayMembersList(campaign);
 const displaySettings = (campaign: Campaign) => {
     return Effect.gen(function* (_) {
         try {
-            // Explicitly cast to any to handle the type mismatch
-            yield* Effect.orDie(displayCampaignSettings(campaign) as any);
+            // Explicitly cast to unknown to handle the type mismatch
+            yield* Effect.orDie(displayCampaignSettings(campaign) as unknown);
         } catch (error) {
             // Log the error
             yield* Effect.logError(`Error in campaign settings: ${error}`);
@@ -41,7 +41,9 @@ const displaySettings = (campaign: Campaign) => {
 
             // Wait for user acknowledgment
             yield* Effect.promise(() =>
-                inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
+                inquirer.prompt([
+                    { type: "input", name: "continue", message: "Press Enter to continue" },
+                ])
             );
         }
     });
@@ -53,9 +55,9 @@ const formatCampaignDetails = (campaign: Campaign): string => {
         `Name: ${campaign.name}`,
         `ID: ${campaign.id}`,
         `Visibility: ${campaign.visibility}`,
-        `Description: ${campaign.entry || 'No description'}`,
+        `Description: ${campaign.entry || "No description"}`,
         `Members: ${campaign.members ? Array.from(campaign.members).length : 0}`,
-        `Entity Count: ${campaign.entity_count || 'Unknown'}`,
+        `Entity Count: ${campaign.entity_count || "Unknown"}`,
     ];
 
     if (campaign.locale) {
@@ -66,23 +68,23 @@ const formatCampaignDetails = (campaign: Campaign): string => {
         details.push(`System: ${campaign.system}`);
     }
 
-    return details.join('\n');
+    return details.join("\n");
 };
 
 // Display campaign dashboard and handle actions
-export const campaignDashboard = (campaign: Campaign): Effect.Effect<void, any, any> => {
+export const campaignDashboard = (campaign: Campaign): Effect.Effect<void, unknown, unknown> => {
     return Effect.gen(function* (_) {
         // Get API service
         const campaignsApi = yield* CampaignsApiService;
 
         // Attempt to refresh campaign data to ensure we have latest details
         try {
-            if (campaign.id && typeof campaign.id === 'number') {
+            if (campaign.id && typeof campaign.id === "number") {
                 // Modify request to fetch the campaign with members included
                 // Type casting as needed to satisfy the API contract
-                const campaignId = campaign.id as any;
+                const campaignId = campaign.id as unknown;
                 const refreshRequest = new CampaignById({
-                    id: campaignId
+                    id: campaignId,
                 });
 
                 // Fetch the campaign data
@@ -90,16 +92,19 @@ export const campaignDashboard = (campaign: Campaign): Effect.Effect<void, any, 
                 if (refreshedData.data) {
                     // Create a new campaign object that combines the old members with the new data
                     const updatedCampaign = {
-                        ...refreshedData.data
+                        ...refreshedData.data,
                     };
 
                     // If the updated campaign doesn't have members but the original did, use the original members
-                    if (campaign.members && campaign.members.size > 0 &&
-                        (!updatedCampaign.members || updatedCampaign.members.size === 0)) {
+                    if (
+                        campaign.members &&
+                        campaign.members.size > 0 &&
+                        (!updatedCampaign.members || updatedCampaign.members.size === 0)
+                    ) {
                         // Safe way to copy the members - create a new object instead of trying to modify read-only property
                         const campaignWithMembers = {
                             ...updatedCampaign,
-                            members: campaign.members
+                            members: campaign.members,
                         };
 
                         // Replace the campaign reference entirely
@@ -109,7 +114,7 @@ export const campaignDashboard = (campaign: Campaign): Effect.Effect<void, any, 
                         Object.assign(campaign, updatedCampaign);
                     }
 
-                    yield* Effect.logInfo('Campaign data refreshed');
+                    yield* Effect.logInfo("Campaign data refreshed");
                 }
             }
         } catch (error) {
@@ -122,69 +127,77 @@ export const campaignDashboard = (campaign: Campaign): Effect.Effect<void, any, 
             console.clear();
 
             // Display campaign header
-            console.log('='.repeat(50));
+            console.log("=".repeat(50));
             console.log(`CAMPAIGN: ${campaign.name}`);
-            console.log('='.repeat(50));
-            console.log('');
+            console.log("=".repeat(50));
+            console.log("");
             console.log(formatCampaignDetails(campaign));
-            console.log('');
-            console.log('-'.repeat(50));
+            console.log("");
+            console.log("-".repeat(50));
 
             // Present options menu
             const { action } = yield* Effect.promise(() =>
                 inquirer.prompt([
                     {
-                        type: 'list',
-                        name: 'action',
-                        message: 'Select an action:',
+                        type: "list",
+                        name: "action",
+                        message: "Select an action:",
                         choices: [
-                            { name: 'View/Edit Entities', value: 'entities' },
-                            { name: 'View Campaign Members', value: 'members' },
-                            { name: 'Campaign Settings', value: 'settings' },
-                            { name: 'View Campaign URL', value: 'url' },
-                            { name: 'Back to Campaign Selection', value: 'back' },
-                            { name: 'Exit', value: 'exit' }
-                        ]
-                    }
+                            { name: "View/Edit Entities", value: "entities" },
+                            { name: "View Campaign Members", value: "members" },
+                            { name: "Campaign Settings", value: "settings" },
+                            { name: "View Campaign URL", value: "url" },
+                            { name: "Back to Campaign Selection", value: "back" },
+                            { name: "Exit", value: "exit" },
+                        ],
+                    },
                 ])
             );
 
             // Handle selected action
             switch (action) {
-                case 'entities':
+                case "entities":
                     yield* displayEntityMenu(campaign);
                     break;
-                case 'members':
+                case "members":
                     yield* displayMembersView(campaign);
                     break;
-                case 'settings':
+                case "settings":
                     yield* displaySettings(campaign);
                     break;
-                case 'url':
+                case "url":
                     if (campaign.urls?.view) {
                         console.log(`Campaign URL: ${campaign.urls.view}`);
-                        yield* Effect.promise(() => inquirer.prompt([{
-                            type: 'input',
-                            name: 'continue',
-                            message: 'Press Enter to continue'
-                        }]));
+                        yield* Effect.promise(() =>
+                            inquirer.prompt([
+                                {
+                                    type: "input",
+                                    name: "continue",
+                                    message: "Press Enter to continue",
+                                },
+                            ])
+                        );
                     } else {
-                        console.log('Campaign URL not available');
-                        yield* Effect.promise(() => inquirer.prompt([{
-                            type: 'input',
-                            name: 'continue',
-                            message: 'Press Enter to continue'
-                        }]));
+                        console.log("Campaign URL not available");
+                        yield* Effect.promise(() =>
+                            inquirer.prompt([
+                                {
+                                    type: "input",
+                                    name: "continue",
+                                    message: "Press Enter to continue",
+                                },
+                            ])
+                        );
                     }
                     break;
-                case 'back':
+                case "back":
                     return;
-                case 'exit':
+                case "exit":
                     exit = true;
                     break;
             }
         }
 
-        yield* Effect.logInfo('Exiting Campaign Dashboard');
+        yield* Effect.logInfo("Exiting Campaign Dashboard");
     });
 };

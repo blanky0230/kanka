@@ -50,7 +50,7 @@ describe("ExampleService", () => {
      */
     it("API implementation - executes implementation code with proper service injection", async () => {
       // 1. Setup mocks for all client methods
-      const getMock = mock(function(path: string, params?: any) {
+      const getMock = mock(function(path: string, params?: unknown) {
         return Effect.succeed({
           data: [{ id: 1, name: "Test" }],
           meta: { current_page: 1, from: 1, last_page: 1, path: "", per_page: 15, to: 1, total: 0 },
@@ -59,7 +59,7 @@ describe("ExampleService", () => {
         });
       });
       
-      const patchMock = mock(function(path: string, data: any, params?: any) {
+      const patchMock = mock(function(path: string, data: unknown, params?: unknown) {
         return Effect.succeed({
           data: { id: 123, name: "Updated Test" }
         });
@@ -122,9 +122,9 @@ describe("ExampleService", () => {
       
       // 10. Verify we got results from each method
       expect(result).toBeDefined();
-      expect((result as any).listResult).toBeDefined();
-      expect((result as any).getByIdResult).toBeDefined();
-      expect((result as any).updateResult).toBeDefined();
+      expect((result as unknown).listResult).toBeDefined();
+      expect((result as unknown).getByIdResult).toBeDefined();
+      expect((result as unknown).updateResult).toBeDefined();
     });
   });
   
@@ -133,20 +133,20 @@ describe("ExampleService", () => {
    */
   describe("API Method Behavior", () => {
     // Setup shared mocks and client
-    let getMock: any;
-    let patchMock: any;
-    let mockClient: any;
+    let getMock: unknown;
+    let patchMock: unknown;
+    let mockClient: unknown;
     
     beforeEach(() => {
       // Reset mocks before each test
-      getMock = mock(function(path: string, params?: any) {
+      getMock = mock(function(path: string, params?: unknown) {
         return Effect.succeed({
           data: [{ id: 1, name: "Test" }],
           meta: { current_page: 1, total: 1 }
         });
       });
       
-      patchMock = mock(function(path: string, data: any, params?: any) {
+      patchMock = mock(function(path: string, data: unknown, params?: unknown) {
         return Effect.succeed({
           data: { id: 123, name: "Updated Test" }
         });

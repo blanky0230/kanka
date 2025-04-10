@@ -11,10 +11,21 @@ import { TaggedEntitySchema } from "../../schemas/common.js";
  * Entity type schema (character, location, item, etc.)
  */
 export const EntityTypeSchema = Schema.Literal(
-    "character", "location", "item", "family",
-    "organization", "note", "event", "calendar",
-    "ability", "race", "map", "timeline",
-    "conversation", "dice_roll", "quest"
+    "character",
+    "location",
+    "item",
+    "family",
+    "organization",
+    "note",
+    "event",
+    "calendar",
+    "ability",
+    "race",
+    "map",
+    "timeline",
+    "conversation",
+    "dice_roll",
+    "quest"
 );
 export type EntityType = typeof EntityTypeSchema.Type;
 

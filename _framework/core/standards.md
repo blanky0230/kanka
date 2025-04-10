@@ -22,7 +22,7 @@ This document outlines the core standards for our codebase. All developers shoul
 
 ## Code Organization
 
-1. **File Size**: No file shall be larger than ~500 lines, regardless of whether it's source code, markdown, or any other text format. If a file would exceed this limit, split it into logical components.
+1. **File Size**: No file shall be larger than ~500 lines, regardless of whether it's source code, markdown, or unknown other text format. If a file would exceed this limit, split it into logical components.
 
 2. **Module Structure**: Organize code into well-defined modules with clear responsibilities.
 

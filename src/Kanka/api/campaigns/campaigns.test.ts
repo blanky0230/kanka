@@ -4,17 +4,17 @@
  * Created: 2023-01-01
  * Framework principles applied: Context Discovery, Stepwise Verification
  */
-import { describe, it, expect, mock, beforeEach } from "bun:test";
-import { Effect, Layer, pipe, Context } from "effect";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { Context, Effect, Layer, pipe } from "effect";
+import { mkEntityId, mkEntityName } from "../../schemas/common.js";
 import { ClientServices } from "../client.js";
 import {
-    CampaignListRequest,
     CampaignById,
+    CampaignListRequest,
     CampaignMutation,
+    CampaignsApiLive,
     CampaignsApiService,
-    CampaignsApiLive
 } from "./campaigns.js";
-import { mkEntityId, mkEntityName } from "../../schemas/common.js";
 
 describe("Campaigns API", () => {
     /**
@@ -47,7 +47,7 @@ describe("Campaigns API", () => {
                 name: entityName,
                 created_at: "2023-01-01T00:00:00Z",
                 updated_at: "2023-01-01T00:00:00Z",
-                tags: null
+                tags: null,
             };
 
             const request = new CampaignMutation({ data: campaignData });
@@ -71,7 +71,7 @@ describe("Campaigns API", () => {
         it("handles different ID values correctly", () => {
             const testIds = [1, 42, 999];
 
-            testIds.forEach(id => {
+            testIds.forEach((id) => {
                 const entityId = mkEntityId(id);
                 const path = `campaigns/${entityId}`;
                 expect(path).toBe(`campaigns/${id}`);
@@ -90,19 +90,27 @@ describe("Campaigns API", () => {
          */
         it("API implementation - directly executes implementation code in lines 67-105", async () => {
             // Setup for list
-            const getMock = mock(function (path: string, params?: any) {
+            const getMock = mock(function (_path: string, _params?: unknown) {
                 return Effect.succeed({
                     data: [{ id: 1, name: "Test" }],
-                    meta: { current_page: 1, from: 1, last_page: 1, path: "", per_page: 15, to: 1, total: 0 },
+                    meta: {
+                        current_page: 1,
+                        from: 1,
+                        last_page: 1,
+                        path: "",
+                        per_page: 15,
+                        to: 1,
+                        total: 0,
+                    },
                     links: { first: "", last: "", prev: null, next: null },
-                    sync: ""
+                    sync: "",
                 });
             });
 
             // Setup for update
-            const patchMock = mock(function (path: string, data: any, params?: any) {
+            const patchMock = mock(function (_path: string, _data: unknown, _params?: unknown) {
                 return Effect.succeed({
-                    data: { id: 123, name: "Updated Campaign" }
+                    data: { id: 123, name: "Updated Campaign" },
                 });
             });
 
@@ -112,7 +120,7 @@ describe("Campaigns API", () => {
                 put: mock(() => Effect.succeed({})),
                 post: mock(() => Effect.succeed({})),
                 del: mock(() => Effect.succeed({})),
-                patch: patchMock
+                patch: patchMock,
             };
 
             // Create a proper ClientServices layer
@@ -141,7 +149,7 @@ describe("Campaigns API", () => {
                         name: mkEntityName("Updated Campaign"),
                         created_at: "2023-01-01T00:00:00Z",
                         updated_at: "2023-01-01T00:00:00Z",
-                        tags: null
+                        tags: null,
                     };
 
                     const updateRequest = new CampaignMutation({ data: updateData });
@@ -150,7 +158,7 @@ describe("Campaigns API", () => {
                     return {
                         listResult,
                         getByIdResult,
-                        updateResult
+                        updateResult,
                     };
                 }),
                 // Provide the ClientServices directly to the effect
@@ -158,15 +166,19 @@ describe("Campaigns API", () => {
             );
 
             // Run the program
-            const result = await Effect.runPromise(program as any);
+            const result = await Effect.runPromise(program as unknown);
 
             // Verify the mocks were called with correct parameters
             expect(getMock).toHaveBeenCalledWith("campaigns", null);
             expect(getMock).toHaveBeenCalledWith("campaigns/123", undefined);
-            expect(patchMock).toHaveBeenCalledWith("campaigns/123", expect.objectContaining({
-                id: 123,
-                name: "Updated Campaign"
-            }), undefined);
+            expect(patchMock).toHaveBeenCalledWith(
+                "campaigns/123",
+                expect.objectContaining({
+                    id: 123,
+                    name: "Updated Campaign",
+                }),
+                undefined
+            );
 
             // Verify we got results
             expect(result).toBeDefined();
@@ -182,22 +194,38 @@ describe("Campaigns API", () => {
          */
         it("list() calls client.get with correct path and parameters", () => {
             // Create mock for client.get with explicit parameter signature
-            const getMock = mock(function (path: string, params?: any) {
+            const getMock = mock(function (_path: string, _params?: unknown) {
                 return Effect.succeed({
                     data: [],
-                    meta: { current_page: 1, from: 1, last_page: 1, path: "", per_page: 15, to: 1, total: 0 },
+                    meta: {
+                        current_page: 1,
+                        from: 1,
+                        last_page: 1,
+                        path: "",
+                        per_page: 15,
+                        to: 1,
+                        total: 0,
+                    },
                     links: { first: "", last: "", prev: null, next: null },
-                    sync: ""
+                    sync: "",
                 });
             });
 
             // Create the mock client
             const mockClient = {
                 get: getMock,
-                put: mock(function () { return Effect.succeed({}); }),
-                post: mock(function () { return Effect.succeed({}); }),
-                del: mock(function () { return Effect.succeed({}); }),
-                patch: mock(function () { return Effect.succeed({}); })
+                put: mock(function () {
+                    return Effect.succeed({});
+                }),
+                post: mock(function () {
+                    return Effect.succeed({});
+                }),
+                del: mock(function () {
+                    return Effect.succeed({});
+                }),
+                patch: mock(function () {
+                    return Effect.succeed({});
+                }),
             };
 
             // Create request params
@@ -217,22 +245,30 @@ describe("Campaigns API", () => {
          */
         it("getById() calls client.get with correct campaign ID path", () => {
             // Create mock for client.get with explicit parameter signature
-            const getMock = mock(function (path: string, params?: any) {
+            const getMock = mock(function (_path: string, _params?: unknown) {
                 return Effect.succeed({
                     data: {
                         id: 123,
-                        name: "Test Campaign"
-                    }
+                        name: "Test Campaign",
+                    },
                 });
             });
 
             // Create the mock client
             const mockClient = {
                 get: getMock,
-                put: mock(function () { return Effect.succeed({}); }),
-                post: mock(function () { return Effect.succeed({}); }),
-                del: mock(function () { return Effect.succeed({}); }),
-                patch: mock(function () { return Effect.succeed({}); })
+                put: mock(function () {
+                    return Effect.succeed({});
+                }),
+                post: mock(function () {
+                    return Effect.succeed({});
+                }),
+                del: mock(function () {
+                    return Effect.succeed({});
+                }),
+                patch: mock(function () {
+                    return Effect.succeed({});
+                }),
             };
 
             // Create request
@@ -253,22 +289,30 @@ describe("Campaigns API", () => {
          */
         it("update() calls client.patch with correct path and data", () => {
             // Create mock for client.patch with explicit parameter signature
-            const patchMock = mock(function (path: string, data: any, params?: any) {
+            const patchMock = mock(function (_path: string, _data: unknown, _params?: unknown) {
                 return Effect.succeed({
                     data: {
                         id: 123,
-                        name: "Updated Campaign"
-                    }
+                        name: "Updated Campaign",
+                    },
                 });
             });
 
             // Create the mock client
             const mockClient = {
-                get: mock(function () { return Effect.succeed({}); }),
-                put: mock(function () { return Effect.succeed({}); }),
-                post: mock(function () { return Effect.succeed({}); }),
-                del: mock(function () { return Effect.succeed({}); }),
-                patch: patchMock
+                get: mock(function () {
+                    return Effect.succeed({});
+                }),
+                put: mock(function () {
+                    return Effect.succeed({});
+                }),
+                post: mock(function () {
+                    return Effect.succeed({});
+                }),
+                del: mock(function () {
+                    return Effect.succeed({});
+                }),
+                patch: patchMock,
             };
 
             // Create request data
@@ -281,7 +325,7 @@ describe("Campaigns API", () => {
                 name: entityName,
                 created_at: "2023-01-01T00:00:00Z",
                 updated_at: "2023-01-01T00:00:00Z",
-                tags: null
+                tags: null,
             };
 
             const request = new CampaignMutation({ data: campaignData });
@@ -291,7 +335,11 @@ describe("Campaigns API", () => {
 
             // Verify behavior
             expect(patchMock).toHaveBeenCalledTimes(1);
-            expect(patchMock).toHaveBeenCalledWith(`campaigns/${campaignId}`, campaignData, undefined);
+            expect(patchMock).toHaveBeenCalledWith(
+                `campaigns/${campaignId}`,
+                campaignData,
+                undefined
+            );
         });
     });
 });

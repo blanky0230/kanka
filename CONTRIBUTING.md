@@ -24,19 +24,21 @@ This guide provides comprehensive information for contributors to the Kanka API 
 
 ## Introduction
 
-The Kanka API Client is a TypeScript library for interacting with the [Kanka](https://kanka.io) API. It provides a type-safe, functional approach to working with the API, using Effect.ts for error handling and type safety.
+The Kanka API Client and CLI is a TypeScript library and command-line application for interacting with the [Kanka](https://kanka.io) API. It provides a type-safe, functional approach to working with the API, using Effect.ts for error handling and type safety, and offers an intuitive CLI for end users.
 
-This document serves as the main entry point for understanding how to contribute to the project, including our architectural improvement strategy, coding standards, and implementation patterns.
+This document serves as the main entry point for understanding how to contribute to the project, including our architectural improvement strategy, coding standards, and implementation patterns for both the API client and CLI components.
 
 ## Project Overview
 
-The Kanka API Client offers:
+The Kanka API Client and CLI offers:
 
-- **Type-safe**: Full TypeScript support with proper types for all API responses
+- **Interactive CLI**: Terminal-based user interface for managing Kanka campaigns and entities
+- **Type-safe**: Full TypeScript support with proper types for all API operations
 - **Error Handling**: Comprehensive error handling using Effect.js
 - **Testability**: Easy to test with Effect.js's testing utilities
 - **Configurability**: Flexible configuration options
 - **Resource Mapping**: Map all API resources to proper TypeScript interfaces
+- **Entity Management**: Complete CRUD operations for all entity types
 
 We have successfully implemented several architectural improvements:
 
@@ -84,13 +86,18 @@ We have successfully implemented several architectural improvements:
 
 ## Project Structure
 
-The Kanka API Client is organized as follows:
+The Kanka API Client and CLI is organized as follows:
 
 ```
 src/Kanka/
   api/            # API implementation files
+    campaigns/    # Campaign-related API functions
+    entities/     # Entity-related API functions
+  cli/            # CLI implementation
+    components/   # UI components for different views
+    services/     # Business logic for CLI operations
+    utils/        # Helper utilities
   schemas/        # Schema definitions
-  examples/       # Example usage
   config.ts       # Configuration
   errors.ts       # Error types
   index.ts        # Main exports
@@ -111,6 +118,8 @@ src/Kanka/resources/
 ```
 
 ## Implementation Workflow
+
+### API Client Workflow
 
 1. **Read API documentation** in `data/` directory to understand the endpoint
 2. **Create schema file** with interfaces and Schema validators
@@ -150,6 +159,34 @@ src/Kanka/resources/
    );
    ```
 5. **Update implementation plan** to track progress
+### CLI Component Workflow
+
+1. **Understand component requirements** and how they'll fit within the existing CLI structure
+2. **Create UI component** in `src/Kanka/cli/components/` directory
+   ```typescript
+   // Example: src/Kanka/cli/components/entity-editor.ts
+   export const editEntity = (campaign: Campaign, entity: Entity): Effect.Effect<void, unknown, unknown> => {
+     return Effect.gen(function* (_) {
+       // Implementation
+     });
+   };
+   ```
+3. **Integrate with API client** to fetch or update data
+   ```typescript
+   const entitiesApi = yield* EntitiesApiService;
+   const result = yield* entitiesApi.update(updateRequest);
+   ```
+4. **Add error handling** for UI operations
+   ```typescript
+   try {
+     // UI operations
+   } catch (error) {
+     const errorMessage = error instanceof Error ? error.message : String(error);
+     yield* Effect.logError(`Error updating entity: ${errorMessage}`);
+     console.log(`Error updating entity: ${errorMessage}`);
+   }
+   ```
+5. **Update relevant documentation** in CLI README files
 
 ## Coding Standards
 
@@ -170,13 +207,13 @@ src/Kanka/resources/
     console.error(error);
   }
   ```
-- Prefer `unknown` over `any` for type safety
+- Prefer `unknown` over `unknown` for type safety
   ```typescript
   // Good
   const parseResponse = (data: unknown): Character => { /* ... */ }
   
   // Avoid
-  const parseResponse = (data: any): Character => { /* ... */ }
+  const parseResponse = (data: unknown): Character => { /* ... */ }
   ```
 - Use **Schema validation** for runtime type checking
   ```typescript
@@ -250,7 +287,7 @@ We have implemented several architectural improvements to make the codebase more
 
 ### A1: Generic Entity API Factory
 
-The Generic Entity API Factory creates standard API operations (get, create, update, delete) for any entity type, reducing code duplication.
+The Generic Entity API Factory creates standard API operations (get, create, update, delete) for unknown entity type, reducing code duplication.
 
 ```typescript
 // Instead of writing this for every entity:
@@ -582,7 +619,7 @@ Before submitting your code for review, check that:
   - Uses pure functions
   - Uses function composition with pipe()
 - [ ] Types are properly defined and used
-  - No `any` types (use `unknown` instead)
+  - No `unknown` types (use `unknown` instead)
   - Proper Schema validation
   - Consistent interface naming
 - [ ] Error handling is comprehensive

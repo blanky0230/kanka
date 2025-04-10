@@ -5,29 +5,29 @@
  * Framework principles applied: STAKEHOLDER_PRIORITY, CONFIGURATION_PROXIMITY
  */
 
-import { Effect, Console } from 'effect';
-import { runCli } from './index.js';
+import { Effect } from "effect";
+import { runCli } from "./index.js";
 
 // Display banner
 const displayBanner = (): void => {
-    console.log('\n');
-    console.log('='.repeat(50));
-    console.log('  KANKA CLI - Terminal UI for Kanka Campaign Management');
-    console.log('='.repeat(50));
-    console.log('\n');
+    console.log("\n");
+    console.log("=".repeat(50));
+    console.log("  KANKA CLI - Terminal UI for Kanka Campaign Management");
+    console.log("=".repeat(50));
+    console.log("\n");
 };
 
 // Run the application
 const runApp = Effect.gen(function* (_) {
     // Display welcome banner
     displayBanner();
-
     // Start the CLI
     runCli();
+    yield* Effect.succeed(1);
 });
 
 // Execute the application
-Effect.runPromise(runApp).catch(error => {
-    console.error('Failed to start Kanka CLI', error);
+Effect.runPromise(runApp).catch((error) => {
+    console.error("Failed to start Kanka CLI", error);
     process.exit(1);
 });

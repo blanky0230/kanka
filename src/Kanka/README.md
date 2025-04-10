@@ -1,106 +1,65 @@
-# Kanka API Client
+# Kanka API & CLI Components
 
-A fully featured API client for the [Kanka](https://kanka.io) API using Effect.ts.
+This directory contains the core components of the Kanka API client and CLI application.
 
-## Features
+## Structure
 
-- **Type-safe**: Full TypeScript support with proper types for all API responses
-- **Error Handling**: Comprehensive error handling using Effect.js
-- **Testability**: Easy to test with Effect.js's testing utilities
-- **Configurability**: Flexible configuration options
-- **Resource Mapping**: Map all API resources to proper TypeScript interfaces
+- **api/**: Core API client implementation
+  - `client.ts`: Base HTTP client with authentication and error handling
+  - `campaigns/`: Campaign-related API endpoints
+  - `entities/`: Entity-related API endpoints (characters, locations, etc.)
+- **cli/**: Command-line interface components
+  - `components/`: UI components for different views
+  - `services/`: Business logic for CLI operations
+  - `utils/`: Helper utilities
+- **schemas/**: TypeScript type definitions and schemas
 
-## Installation
+## API Client Usage
 
-This client is part of the project and doesn't need separate installation.
+While the CLI is the recommended way to interact with Kanka, the API client can also be used directly for custom applications or scripts.
 
-## Configuration
-
-The client can be configured in several ways:
-
-### Using explicit configuration
+### Configuration
 
 ```typescript
 import { Effect } from "effect";
-import { makeConfig, getCampaigns } from "./Kanka";
+import { makeConfig } from "./config";
 
-const program = Effect.gen(function* (_) {
-  const campaigns = yield* getCampaigns();
-  console.log(`Found ${campaigns.data.length} campaigns`);
+// Create a configuration layer
+const configLayer = makeConfig({
+  apiKey: "your-api-key",
+  baseUrl: "https://app.kanka.io/api/1.0"
 });
 
-Effect.runPromise(
-  program.pipe(
-    Effect.provide(
-      makeConfig({ apiKey: "your-api-key" })
-    )
-  )
-);
+// Use environment variables
+import { configFromEnv } from "./config";
 ```
 
-### Using environment variables
+### Basic Example
 
 ```typescript
 import { Effect } from "effect";
-import { configFromEnv, getCampaigns } from "./Kanka";
+import { configFromEnv } from "./config";
+import { EntitiesApiService } from "./api/entities/entities";
+import { EntityListRequest, EntityCreateRequest } from "./api/entities/entities";
+import { mkEntityId } from "./schemas/common";
 
-const program = Effect.gen(function* (_) {
-  const campaigns = yield* getCampaigns();
-  console.log(`Found ${campaigns.data.length} campaigns`);
-});
-
-Effect.runPromise(
-  program.pipe(
-    Effect.provide(configFromEnv)
-  )
-);
-```
-
-The following environment variables are used:
-
-- `KANKA_API_KEY`: Your Kanka API key
-- `KANKA_BASE_URL`: The base URL for the Kanka API (defaults to `https://app.kanka.io/api/1.0`)
-
-## Usage
-
-### Campaigns
-
-```typescript
-import { Effect } from "effect";
-import { makeConfig, getCampaigns, getCampaign, createCampaign } from "./Kanka";
-
-// Get all campaigns
-const getAllCampaigns = Effect.gen(function* (_) {
-  const campaigns = yield* getCampaigns();
-  console.log(`Found ${campaigns.data.length} campaigns`);
-  return campaigns;
-});
-
-// Get a specific campaign
-const getSpecificCampaign = Effect.gen(function* (_) {
-  const campaign = yield* getCampaign(123); // Replace with a real campaign ID
-  console.log(`Campaign: ${campaign.data.name}`);
-  return campaign;
-});
-
-// Create a new campaign
-const createNewCampaign = Effect.gen(function* (_) {
-  const campaign = yield* createCampaign({
-    name: "My New Campaign",
-    entry: "This is a test campaign created with the Kanka API client",
-    locale: "en",
-    visibility: "private",
+// List entities in a campaign
+const listEntities = Effect.gen(function* (_) {
+  const entitiesApi = yield* EntitiesApiService;
+  
+  const request = new EntityListRequest({
+    campaignId: mkEntityId(123), // Replace with actual campaign ID
+    params: null
   });
-  console.log(`Created campaign: ${campaign.data.name}`);
-  return campaign;
+  
+  const response = yield* entitiesApi.list(request);
+  return response;
 });
 
-// Run with configuration
+// Run the program
 Effect.runPromise(
-  getAllCampaigns.pipe(
-    Effect.provide(
-      makeConfig({ apiKey: "your-api-key" })
-    )
+  listEntities.pipe(
+    Effect.provide(configFromEnv)
   )
 );
 ```
@@ -109,60 +68,51 @@ Effect.runPromise(
 
 ```typescript
 import { Effect } from "effect";
-import { makeConfig, getCampaigns } from "./Kanka";
-import { Error, KankaApiError, KankaAuthenticationError } from "./Kanka";
 
-const program = Effect.gen(function* (_) {
-  const campaigns = yield* getCampaigns();
-  console.log(`Found ${campaigns.data.length} campaigns`);
-  return campaigns;
-});
-
-Effect.runPromise(
-  program.pipe(
-    Effect.catchTag("KankaAuthenticationError", (error) => {
-      console.error("Authentication failed:", error.message);
-      return Effect.fail(error);
-    }),
-    Effect.catchTag("KankaApiError", (error) => {
-      console.error("API error:", error.message);
-      return Effect.fail(error);
-    }),
-    Effect.catchAll((error) => {
-      console.error("Unknown error:", error);
-      return Effect.fail(error);
-    }),
-    Effect.provide(
-      makeConfig({ apiKey: "your-api-key" })
-    )
-  )
+const program = listEntities.pipe(
+  Effect.catchAll(error => {
+    console.error("Error:", error);
+    return Effect.fail(error);
+  }),
+  Effect.provide(configFromEnv)
 );
+
+Effect.runPromise(program);
+```
+
+## Entity Operations
+
+The API client now supports full CRUD operations for all entity types:
+
+- **List entities**: Get all entities or filter by type
+- **Create entities**: Create new entities of unknown supported type
+- **Update entities**: Modify existing entities
+- **Delete entities**: Remove entities from campaigns
+
+## CLI Usage
+
+For most users, the CLI interface is the recommended way to interact with Kanka. See the [CLI README](./cli/README.md) for details on using the command-line interface.
+
+To run the CLI:
+
+```bash
+bun kanka
 ```
 
 ## API Reference
 
-### Configuration
-
-- `makeConfig(config)`: Create a configuration layer with the provided config
-- `configFromEnv`: Create a configuration layer from environment variables
+The API client implements the following operations:
 
 ### Campaigns
+- List, get, create, update, and delete campaigns
+- Manage campaign members
+- Campaign settings management
 
-- `getCampaigns(params?)`: Get all campaigns
-- `getCampaign(id)`: Get a campaign by ID
-- `createCampaign(params)`: Create a new campaign
-- `updateCampaign(id, params)`: Update a campaign
-- `deleteCampaign(id)`: Delete a campaign
-- `getCampaignMembers(campaignId, params?)`: Get campaign members
-- `getCampaignMember(campaignId, userId)`: Get a campaign member
-- `addCampaignMember(campaignId, params)`: Add a member to a campaign
-- `updateCampaignMember(campaignId, userId, params)`: Update a campaign member
-- `removeCampaignMember(campaignId, userId)`: Remove a member from a campaign
-- `followCampaign(campaignId)`: Follow a campaign
-- `unfollowCampaign(campaignId)`: Unfollow a campaign
-- `boostCampaign(campaignId)`: Boost a campaign
-- `unboostCampaign(campaignId)`: Unboost a campaign
+### Entities
+- List all entities
+- Filter entities by type
+- Create entities
+- Update entity details
+- Delete entities
 
-## Examples
-
-See the `examples.ts` file for more usage examples.
+See the corresponding API modules for detailed method signatures and parameters.

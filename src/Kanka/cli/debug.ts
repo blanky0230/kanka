@@ -5,11 +5,15 @@
  * Framework principles applied: CONTEXT_DISCOVERY, STEPWISE_VERIFICATION
  */
 
-import { Effect, Layer } from 'effect';
-import { BunContext } from '@effect/platform-bun';
-import { ConfigFromEnv } from '../config.js';
-import { ClientServicesLive, HttpService } from '../api/client.js';
-import { CampaignsApiLive, CampaignsApiService, CampaignListRequest } from '../api/campaigns/campaigns.js';
+import { BunContext } from "@effect/platform-bun";
+import { Effect, Layer } from "effect";
+import {
+    CampaignListRequest,
+    CampaignsApiLive,
+    CampaignsApiService,
+} from "../api/campaigns/campaigns.js";
+import { ClientServicesLive, HttpService } from "../api/client.js";
+import { ConfigFromEnv } from "../config.js";
 
 // Create a simple program to test the CampaignsAPI
 const testProgram = Effect.gen(function* (_) {
@@ -20,8 +24,8 @@ const testProgram = Effect.gen(function* (_) {
 
         console.log("- Creating a CampaignListRequest");
         const request = new CampaignListRequest({
-            url: 'campaigns',
-            params: null
+            url: "campaigns",
+            params: null,
         });
         console.log("  ✓ Successfully created request");
 
@@ -47,8 +51,12 @@ const debug = async (): Promise<void> => {
     try {
         // Verify environment variables
         console.log("Checking environment variables:");
-        console.log(`- KANKA_API_KEY: ${process.env.KANKA_API_KEY ? 'Set (length: ' + process.env.KANKA_API_KEY.length + ')' : 'Not set'}`);
-        console.log(`- KANKA_BASE_URL: ${process.env.KANKA_BASE_URL || 'Not set (will use default)'}`);
+        console.log(
+            `- KANKA_API_KEY: ${process.env.KANKA_API_KEY ? "Set (length: " + process.env.KANKA_API_KEY.length + ")" : "Not set"}`
+        );
+        console.log(
+            `- KANKA_BASE_URL: ${process.env.KANKA_BASE_URL || "Not set (will use default)"}`
+        );
 
         console.log("\nStep 2: Building service layers");
 
@@ -91,7 +99,7 @@ const debug = async (): Promise<void> => {
                 console.log("✓ Program completed successfully");
                 console.log("\n==== Debug Complete ====");
             })
-            .catch(error => {
+            .catch((error) => {
                 console.log("\nStep 5: Analyzing results");
                 console.log("✗ Program failed with error:");
                 console.log(error);
@@ -103,6 +111,6 @@ const debug = async (): Promise<void> => {
 };
 
 // Run the debug function
-debug().catch(error => {
+debug().catch((error) => {
     console.error("Unhandled error in debug script:", error);
 });

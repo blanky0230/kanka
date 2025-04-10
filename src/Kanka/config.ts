@@ -19,7 +19,7 @@ export interface KankaConfig {
 /**
  * Context tag for the Kanka API configuration
  */
-export class KankaConfigTag extends Context.Tag("KankaConfig")<KankaConfigTag, KankaConfig>() { }
+export class KankaConfigTag extends Context.Tag("KankaConfig")<KankaConfigTag, KankaConfig>() {}
 
 /**
  * Default configuration for the Kanka API
@@ -62,7 +62,6 @@ export const ConfigFromEnv = Layer.effect(
                 ? process.env.KANKA_BASE_URL || DEFAULT_CONFIG.baseUrl
                 : DEFAULT_CONFIG.baseUrl;
 
-
         if (!apiKey) {
             yield* Effect.logWarning("No KANKA_API_KEY environment variable found");
         }
@@ -74,21 +73,22 @@ export const ConfigFromEnv = Layer.effect(
     })
 );
 
-export const ConfigForCampaign = (campaign: Pick<Campaign, "urls">) => Layer.effect(
-    KankaConfigTag,
-    Effect.gen(function* () {
-        const current = yield* KankaConfigTag;
-        if (!current) {
-            return yield* Effect.fail({ message: "RootAPI not set" })
-        }
+export const ConfigForCampaign = (campaign: Pick<Campaign, "urls">) =>
+    Layer.effect(
+        KankaConfigTag,
+        Effect.gen(function* () {
+            const current = yield* KankaConfigTag;
+            if (!current) {
+                return yield* Effect.fail({ message: "RootAPI not set" });
+            }
 
-        if (!campaign.urls) {
-            return yield* Effect.fail({ message: "campaign has not urls?!" });
-        }
+            if (!campaign.urls) {
+                return yield* Effect.fail({ message: "campaign has not urls?!" });
+            }
 
-        return {
-            ...current,
-            baseUrl: campaign.urls?.api ?? DEFAULT_CONFIG.baseUrl
-        }
-    })
-)
+            return {
+                ...current,
+                baseUrl: campaign.urls?.api ?? DEFAULT_CONFIG.baseUrl,
+            };
+        })
+    );

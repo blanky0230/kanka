@@ -263,7 +263,7 @@ export const CampaignSchema = Schema.Struct({
             api: Schema.NullishOr(Schema.String),
         })
     ),
-})
+});
 export type Campaign = typeof CampaignSchema.Type;
 
 /**
@@ -318,7 +318,6 @@ const CampaignMemberSchema = Schema.Struct({
 });
 export type CampaignMember = typeof CampaignMemberSchema.Type;
 
-
 const CampaignCreationSchema = Schema.Struct({
     name: Schema.String,
     entry: Schema.optional(Schema.String),
@@ -343,8 +342,8 @@ const CampaignCreationSchema = Schema.Struct({
 
     // is_private: Schema.optional(Schema.Boolean),
 
-    settings: Schema.optional(Schema.partial(CampaignSettingsSchema))
-})
+    settings: Schema.optional(Schema.partial(CampaignSettingsSchema)),
+});
 export type CreateCampaignParams = typeof CampaignCreationSchema.Type;
 
 /**

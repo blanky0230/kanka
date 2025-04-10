@@ -78,11 +78,11 @@ export const ExampleService = Context.Tag<ExampleService>(ExampleServiceTag);
 // -----------------------------------------------------------------------------
 
 export interface ClientDependencies {
-  get(path: string, params?: any): Effect.Effect<unknown, Error, unknown>;
-  post(path: string, data: any, params?: any): Effect.Effect<unknown, Error, unknown>;
-  put(path: string, data: any, params?: any): Effect.Effect<unknown, Error, unknown>;
-  patch(path: string, data: any, params?: any): Effect.Effect<unknown, Error, unknown>;
-  del(path: string, params?: any): Effect.Effect<unknown, Error, unknown>;
+  get(path: string, params?: unknown): Effect.Effect<unknown, Error, unknown>;
+  post(path: string, data: unknown, params?: unknown): Effect.Effect<unknown, Error, unknown>;
+  put(path: string, data: unknown, params?: unknown): Effect.Effect<unknown, Error, unknown>;
+  patch(path: string, data: unknown, params?: unknown): Effect.Effect<unknown, Error, unknown>;
+  del(path: string, params?: unknown): Effect.Effect<unknown, Error, unknown>;
 }
 
 // Create a unique tag ID string for your client dependencies
@@ -194,7 +194,7 @@ export const exampleProgram = pipe(
 describe("ExampleService", () => {
   it("list - calls client.get with correct path and parameters", async () => {
     // Setup mocks
-    const getMock = mock(function(path: string, params?: any) {
+    const getMock = mock(function(path: string, params?: unknown) {
       return Effect.succeed({
         data: [],
         meta: { current_page: 1, from: 1, last_page: 1, total: 0 },

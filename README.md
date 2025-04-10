@@ -71,7 +71,7 @@ Available commands:
 
 - **Entity Management**:
   - Browse entities by type or view all entities
-  - Create new entities of any supported type
+  - Create new entities of unknown supported type
   - Edit existing entities (name, description, image URL, privacy settings)
   - Delete entities with confirmation
 

@@ -5,10 +5,10 @@
  * Framework principles applied: STAKEHOLDER_PRIORITY, CONTEXT_DISCOVERY, STEPWISE_VERIFICATION
  */
 
-import { Context, Effect } from 'effect';
-import inquirer from 'inquirer';
-import { Campaign, CampaignMemberListItem, CampaignMemberUser } from '../../api/campaigns/types.js';
-import terminalImage from 'terminal-image';
+import { Context, Effect } from "effect";
+import inquirer from "inquirer";
+import terminalImage from "terminal-image";
+import { Campaign, CampaignMemberListItem, CampaignMemberUser } from "../../api/campaigns/types.js";
 
 /**
  * Fetch and render avatar image
@@ -31,7 +31,7 @@ const fetchAndRenderAvatar = async (avatarUrl: string | null | undefined): Promi
         // Render the image in the terminal
         const renderedImage = await terminalImage.buffer(Buffer.from(buffer), {
             width: 512, // Smaller width for avatar
-            height: 512 // Smaller height for avatar
+            height: 512, // Smaller height for avatar
         });
 
         return renderedImage;
@@ -49,7 +49,7 @@ const formatMemberDetails = (member: CampaignMemberListItem): string => {
     const details = [
         `ID: ${member.id}`,
         `User Name: ${member.user.name}`,
-        `User ID: ${member.user.id}`
+        `User ID: ${member.user.id}`,
     ];
 
     // Add avatar URL for reference even if we'll render it separately
@@ -59,28 +59,32 @@ const formatMemberDetails = (member: CampaignMemberListItem): string => {
         details.push(`Avatar: None`);
     }
 
-    return details.join('\n');
+    return details.join("\n");
 };
 
 /**
  * Display member details in a modal view
  */
-const displayMemberDetails = (member: CampaignMemberListItem): Effect.Effect<void, never, never> => {
+const displayMemberDetails = (
+    member: CampaignMemberListItem
+): Effect.Effect<void, never, never> => {
     return Effect.gen(function* (_) {
         console.clear();
-        console.log('='.repeat(50));
+        console.log("=".repeat(50));
         console.log(`MEMBER DETAILS: ${member.user.name}`);
-        console.log('='.repeat(50));
-        console.log('');
+        console.log("=".repeat(50));
+        console.log("");
         console.log(formatMemberDetails(member));
-        console.log('');
+        console.log("");
 
         // If member has an avatar, render it
         if (member.user.avatar) {
             console.log("Loading avatar image...");
 
             try {
-                const renderedAvatar = yield* Effect.promise(() => fetchAndRenderAvatar(member.user.avatar));
+                const renderedAvatar = yield* Effect.promise(() =>
+                    fetchAndRenderAvatar(member.user.avatar)
+                );
                 console.log(renderedAvatar);
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error);
@@ -88,10 +92,16 @@ const displayMemberDetails = (member: CampaignMemberListItem): Effect.Effect<voi
             }
         }
 
-        console.log('-'.repeat(50));
+        console.log("-".repeat(50));
 
         yield* Effect.promise(() =>
-            inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to return to members list' }])
+            inquirer.prompt([
+                {
+                    type: "input",
+                    name: "continue",
+                    message: "Press Enter to return to members list",
+                },
+            ])
         );
     });
 };
@@ -113,47 +123,53 @@ export const displayMembersList = (campaign: Campaign): Effect.Effect<void, neve
             console.clear();
 
             // Display header
-            console.log('='.repeat(50));
+            console.log("=".repeat(50));
             console.log(`CAMPAIGN MEMBERS: ${campaign.name}`);
-            console.log('='.repeat(50));
+            console.log("=".repeat(50));
             console.log(`Total Members: ${members.length}`);
-            console.log('');
+            console.log("");
 
             if (members.length === 0) {
-                console.log('No members found for this campaign.');
+                console.log("No members found for this campaign.");
                 yield* Effect.promise(() =>
-                    inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to return to dashboard' }])
+                    inquirer.prompt([
+                        {
+                            type: "input",
+                            name: "continue",
+                            message: "Press Enter to return to dashboard",
+                        },
+                    ])
                 );
                 return;
             }
 
             // Create member selection options
-            const choices = members.map(member => ({
+            const choices = members.map((member) => ({
                 name: `${member.user.name} (ID: ${member.id})`,
-                value: member
+                value: member,
             }));
 
             // Add back option
             choices.push({
-                name: 'Back to Campaign Dashboard',
-                value: 'back' as unknown as CampaignMemberListItem // Cast to make TypeScript happy with our choices array
+                name: "Back to Campaign Dashboard",
+                value: "back" as unknown as CampaignMemberListItem, // Cast to make TypeScript happy with our choices array
             });
 
             // Present member selection
             const { selection } = yield* Effect.promise(() =>
                 inquirer.prompt([
                     {
-                        type: 'list',
-                        name: 'selection',
-                        message: 'Select a member to view details:',
+                        type: "list",
+                        name: "selection",
+                        message: "Select a member to view details:",
                         choices,
-                        pageSize: 15
-                    }
+                        pageSize: 15,
+                    },
                 ])
             );
 
             // Handle selection
-            if (selection === 'back') {
+            if (selection === "back") {
                 exitList = true;
             } else {
                 // Display details for selected member
@@ -161,6 +177,6 @@ export const displayMembersList = (campaign: Campaign): Effect.Effect<void, neve
             }
         }
 
-        yield* Effect.logInfo('Returning to campaign dashboard');
+        yield* Effect.logInfo("Returning to campaign dashboard");
     });
 };
