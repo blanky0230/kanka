@@ -11,6 +11,7 @@ This Terminal UI provides a convenient way to access and manage your Kanka campa
 - List and select from available campaigns
 - View campaign details
 - Navigate campaign entities (characters, locations, etc.)
+- Create, edit, and delete entities of all types
 - View campaign members
 - Access campaign settings
 - Direct links to web UI when needed
@@ -87,7 +88,6 @@ CLI components can be tested by mocking API responses and validating UI flows.
 
 ## Future Enhancements
 
-- Entity creation and editing
 - Batch operations
 - Export/import functionality
 - Interactive maps
