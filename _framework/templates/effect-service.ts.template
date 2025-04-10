@@ -1,0 +1,242 @@
+/**
+ * effect-service.ts.template
+ * Template for creating Effect.js service implementations
+ * Created: 2025-04-10
+ * Framework principles applied: CONFIGURATION_PROXIMITY, CONTEXT_DISCOVERY, STEPWISE_VERIFICATION
+ * 
+ * NOTE: This is a template file that should be copied and customized for your specific service.
+ * The filename should be changed to remove the .template extension when creating a real service.
+ */
+
+import { Effect, Layer, Context, pipe, RequestResolver, Request } from "effect";
+
+// -----------------------------------------------------------------------------
+// Step 1: Define your request types
+// -----------------------------------------------------------------------------
+
+// Define a symbol for the Request type ID
+const RequestTypeId = Symbol.for("RequestTypeId");
+
+// Example request class for fetching data
+export class ExampleRequest implements Request<unknown, Error> {
+  readonly [RequestTypeId]: unknown;
+  readonly _tag = "ExampleRequest";
+  
+  constructor(readonly params: { id?: number; filter?: string }) {
+    this[RequestTypeId] = undefined;
+  }
+}
+
+// Example request class for mutations
+export class ExampleMutation implements Request<unknown, Error> {
+  readonly [RequestTypeId]: unknown;
+  readonly _tag = "ExampleMutation";
+  
+  constructor(readonly data: { id?: number; name: string }) {
+    this[RequestTypeId] = undefined;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Step 2: Define your service interface
+// -----------------------------------------------------------------------------
+
+export interface ExampleService {
+  readonly _tag: "ExampleService";
+  
+  /**
+   * Get a list of examples
+   * @param request The request parameters
+   */
+  list(request: ExampleRequest): Effect.Effect<unknown, Error, unknown>;
+  
+  /**
+   * Get an example by ID
+   * @param request The request with ID
+   */
+  getById(request: ExampleRequest): Effect.Effect<unknown, Error, unknown>;
+  
+  /**
+   * Update an example
+   * @param request The mutation request
+   */
+  update(request: ExampleMutation): Effect.Effect<unknown, Error, unknown>;
+}
+
+// -----------------------------------------------------------------------------
+// Step 3: Create a Context Tag for your service
+// -----------------------------------------------------------------------------
+
+// Create a unique tag ID string for your service
+export const ExampleServiceTag = "ExampleService";
+
+// Create the Context Tag
+export const ExampleService = Context.Tag<ExampleService>(ExampleServiceTag);
+
+// -----------------------------------------------------------------------------
+// Step 4: Create required dependencies
+// -----------------------------------------------------------------------------
+
+export interface ClientDependencies {
+  get(path: string, params?: any): Effect.Effect<unknown, Error, unknown>;
+  post(path: string, data: any, params?: any): Effect.Effect<unknown, Error, unknown>;
+  put(path: string, data: any, params?: any): Effect.Effect<unknown, Error, unknown>;
+  patch(path: string, data: any, params?: any): Effect.Effect<unknown, Error, unknown>;
+  del(path: string, params?: any): Effect.Effect<unknown, Error, unknown>;
+}
+
+// Create a unique tag ID string for your client dependencies
+export const ClientDependenciesTag = "ClientDependencies";
+
+// Create the Context Tag
+export const ClientDependencies = Context.Tag<ClientDependencies>(ClientDependenciesTag);
+
+// -----------------------------------------------------------------------------
+// Step 5: Implement your service
+// -----------------------------------------------------------------------------
+
+export const ExampleServiceLive = Layer.effect(
+  ExampleService,
+  Effect.gen(function* () {
+    // Get dependencies - the ClientDependencies service must be provided
+    const client = yield* Effect.service(ClientDependencies);
+    
+    // Return implementation
+    return {
+      _tag: "ExampleService",
+      
+      list: (request: ExampleRequest) => {
+        // Create task that makes the HTTP request
+        const task = Effect.request(
+          request,
+          RequestResolver.fromEffect((_) => client.get("examples", request.params))
+        ).pipe(
+          Effect.tap(Effect.log)
+        );
+        
+        // Return annotated task for better logging
+        return pipe(
+          task,
+          Effect.annotateLogs("examples", "list")
+        );
+      },
+      
+      getById: (request: ExampleRequest) => {
+        // Validate ID
+        if (!request.params.id) {
+          return Effect.fail(new Error("ID is required"));
+        }
+        
+        // Create task that makes the HTTP request
+        const task = Effect.request(
+          request,
+          RequestResolver.fromEffect((_) => client.get(`examples/${request.params.id}`, undefined))
+        ).pipe(
+          Effect.tap(Effect.log)
+        );
+        
+        // Return annotated task for better logging
+        return pipe(
+          task,
+          Effect.annotateLogs("examples", "getById")
+        );
+      },
+      
+      update: (request: ExampleMutation) => {
+        // Validate data
+        if (!request.data.id) {
+          return Effect.fail(new Error("ID is required for update"));
+        }
+        
+        // Create task that makes the HTTP request
+        const task = Effect.request(
+          request,
+          RequestResolver.fromEffect((_) => client.patch(`examples/${request.data.id}`, request.data, undefined))
+        ).pipe(
+          Effect.tap(Effect.log)
+        );
+        
+        // Return annotated task for better logging
+        return pipe(
+          task,
+          Effect.annotateLogs("examples", "update")
+        );
+      }
+    };
+  })
+);
+
+// -----------------------------------------------------------------------------
+// Step 6: Example usage
+// -----------------------------------------------------------------------------
+
+// Example usage in an application
+export const exampleProgram = pipe(
+  Effect.gen(function* () {
+    // Get the service - must be provided from a Layer
+    const exampleService = yield* Effect.service(ExampleService);
+    
+    // Use the service
+    const results = yield* exampleService.list(new ExampleRequest({ filter: "active" }));
+    
+    return results;
+  }),
+  // Provide the service implementation
+  Effect.provide(ExampleServiceLive)
+);
+
+// -----------------------------------------------------------------------------
+// Step 7: Testing the service
+// -----------------------------------------------------------------------------
+
+/*
+// Example test for the service implementation
+describe("ExampleService", () => {
+  it("list - calls client.get with correct path and parameters", async () => {
+    // Setup mocks
+    const getMock = mock(function(path: string, params?: any) {
+      return Effect.succeed({
+        data: [],
+        meta: { current_page: 1, from: 1, last_page: 1, total: 0 },
+        links: { first: "", last: "", prev: null, next: null }
+      });
+    });
+    
+    // Create mock client
+    const mockClient = {
+      get: getMock,
+      put: mock(() => Effect.succeed({})),
+      post: mock(() => Effect.succeed({})),
+      del: mock(() => Effect.succeed({})),
+      patch: mock(() => Effect.succeed({}))
+    };
+    
+    // Create mock layer
+    const mockClientLayer = Layer.succeed(ClientDependencies, mockClient);
+    
+    // Create test program
+    const program = pipe(
+      Effect.gen(function* () {
+        // Get the API service using the mock client layer
+        const api = yield* Effect.provide(
+          ExampleService,
+          Layer.merge(mockClientLayer, ExampleServiceLive)
+        );
+        
+        // Call the list method
+        const result = yield* api.list(new ExampleRequest({ filter: "active" }));
+        
+        return result;
+      }),
+      // CRITICAL: Also provide the client service directly to the Effect
+      Effect.provideService(ClientDependencies, mockClient)
+    );
+    
+    // Run the program
+    await Effect.runPromise(program);
+    
+    // Verify the mock was called correctly
+    expect(getMock).toHaveBeenCalledWith("examples", { filter: "active" });
+  });
+});
+*/

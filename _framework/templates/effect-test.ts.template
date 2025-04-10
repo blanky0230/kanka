@@ -1,0 +1,204 @@
+/**
+ * effect-test.ts.template
+ * Template for testing Effect.js services
+ * Created: 2025-04-10
+ * Framework principles applied: CONTEXT_DISCOVERY, STEPWISE_VERIFICATION
+ * 
+ * NOTE: This is a template file that should be copied and customized for your specific service tests.
+ * The filename should be changed to remove the .template extension when creating actual test files.
+ */
+
+import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { Effect, Layer, pipe, Context } from "effect";
+
+// Import service dependencies (customize these imports)
+import { 
+  ExampleService, 
+  ExampleServiceLive,
+  ExampleRequest,
+  ExampleMutation,
+  ClientDependencies
+} from "./your-service-file.js";
+
+describe("ExampleService", () => {
+  /**
+   * Test that request objects are created correctly
+   */
+  describe("Request Objects", () => {
+    it("ExampleRequest creates with correct properties", () => {
+      const params = { id: 123, filter: "active" };
+      const request = new ExampleRequest(params);
+      
+      expect(request.params).toEqual(params);
+    });
+    
+    it("ExampleMutation creates with correct data", () => {
+      const data = { id: 123, name: "Example Entity" };
+      const request = new ExampleMutation(data);
+      
+      expect(request.data).toEqual(data);
+    });
+  });
+
+  /**
+   * Test the direct implementation to achieve coverage
+   * This is critical for ensuring the service implementation is covered
+   */
+  describe("Direct Implementation", () => {
+    /**
+     * This test directly executes the implementation code to ensure coverage
+     */
+    it("API implementation - executes implementation code with proper service injection", async () => {
+      // 1. Setup mocks for all client methods
+      const getMock = mock(function(path: string, params?: any) {
+        return Effect.succeed({
+          data: [{ id: 1, name: "Test" }],
+          meta: { current_page: 1, from: 1, last_page: 1, path: "", per_page: 15, to: 1, total: 0 },
+          links: { first: "", last: "", prev: null, next: null },
+          sync: ""
+        });
+      });
+      
+      const patchMock = mock(function(path: string, data: any, params?: any) {
+        return Effect.succeed({
+          data: { id: 123, name: "Updated Test" }
+        });
+      });
+      
+      // 2. Create mock client with all required methods
+      const mockClient = {
+        get: getMock,
+        put: mock(function() { return Effect.succeed({}); }),
+        post: mock(function() { return Effect.succeed({}); }),
+        del: mock(function() { return Effect.succeed({}); }),
+        patch: patchMock
+      };
+      
+      // 3. Create a layer with the mock client
+      const mockClientLayer = Layer.succeed(ClientDependencies, mockClient);
+      
+      // 4. Create a program that runs all service methods
+      const program = pipe(
+        Effect.gen(function* () {
+          // 5. Get the service using proper Layer merging
+          const api = yield* Effect.provide(
+            ExampleService,
+            Layer.merge(mockClientLayer, ExampleServiceLive)
+          );
+          
+          // 6. Execute all methods to ensure full coverage
+          // List method
+          const listRequest = new ExampleRequest({ filter: "active" });
+          const listResult = yield* api.list(listRequest);
+          
+          // GetById method
+          const getByIdRequest = new ExampleRequest({ id: 123 });
+          const getByIdResult = yield* api.getById(getByIdRequest);
+          
+          // Update method
+          const updateData = { id: 123, name: "Updated Test" };
+          const updateRequest = new ExampleMutation(updateData);
+          const updateResult = yield* api.update(updateRequest);
+          
+          // Return all results for verification
+          return {
+            listResult,
+            getByIdResult,
+            updateResult
+          };
+        }),
+        // 7. CRITICAL: Also directly provide the client service to the Effect
+        // This ensures the service is available during execution
+        Effect.provideService(ClientDependencies, mockClient)
+      );
+      
+      // 8. Run the program to execute all the implementation code
+      const result = await Effect.runPromise(program);
+      
+      // 9. Verify mocks were called with correct parameters
+      expect(getMock).toHaveBeenCalledWith("examples", { filter: "active" });
+      expect(getMock).toHaveBeenCalledWith("examples/123", undefined);
+      expect(patchMock).toHaveBeenCalledWith("examples/123", { id: 123, name: "Updated Test" }, undefined);
+      
+      // 10. Verify we got results from each method
+      expect(result).toBeDefined();
+      expect((result as any).listResult).toBeDefined();
+      expect((result as any).getByIdResult).toBeDefined();
+      expect((result as any).updateResult).toBeDefined();
+    });
+  });
+  
+  /**
+   * Test individual methods separately for better isolation and readability
+   */
+  describe("API Method Behavior", () => {
+    // Setup shared mocks and client
+    let getMock: any;
+    let patchMock: any;
+    let mockClient: any;
+    
+    beforeEach(() => {
+      // Reset mocks before each test
+      getMock = mock(function(path: string, params?: any) {
+        return Effect.succeed({
+          data: [{ id: 1, name: "Test" }],
+          meta: { current_page: 1, total: 1 }
+        });
+      });
+      
+      patchMock = mock(function(path: string, data: any, params?: any) {
+        return Effect.succeed({
+          data: { id: 123, name: "Updated Test" }
+        });
+      });
+      
+      mockClient = {
+        get: getMock,
+        put: mock(function() { return Effect.succeed({}); }),
+        post: mock(function() { return Effect.succeed({}); }),
+        del: mock(function() { return Effect.succeed({}); }),
+        patch: patchMock
+      };
+    });
+    
+    it("list() calls client.get with correct path and parameters", async () => {
+      // Create Layer with mock client
+      const mockClientLayer = Layer.succeed(ClientDependencies, mockClient);
+      
+      // Create test program
+      const program = pipe(
+        Effect.gen(function* () {
+          // Get the service with mock client
+          const service = yield* Effect.provide(
+            ExampleService,
+            Layer.merge(mockClientLayer, ExampleServiceLive)
+          );
+          
+          // Call the list method
+          const params = { filter: "active" };
+          const result = yield* service.list(new ExampleRequest(params));
+          
+          return result;
+        }),
+        // Also provide client directly
+        Effect.provideService(ClientDependencies, mockClient)
+      );
+      
+      // Run the program
+      await Effect.runPromise(program);
+      
+      // Verify
+      expect(getMock).toHaveBeenCalledWith("examples", { filter: "active" });
+    });
+    
+    it("getById() calls client.get with correct path", async () => {
+      // Similar pattern as above, but for getById
+      // ...
+    });
+    
+    it("update() calls client.patch with correct path and data", async () => {
+      // Similar pattern as above, but for update
+      // ...
+    });
+  });
+});

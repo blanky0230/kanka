@@ -1,17 +1,27 @@
-import { Context, Effect, Either, Layer, pipe, RequestResolver, Schema } from "effect";
+/**
+ * campaigns.ts
+ * API client for Kanka campaign-related endpoints
+ * Created: 2023-01-01
+ * Framework principles applied: Context Discovery, Type Safety
+ */
+import { Context, Effect, Layer, pipe, RequestResolver, Schema } from "effect";
 import { ParseError } from "effect/ParseResult";
 import { EntityIdSchema, PaginatedResponseSchema } from "../../schemas/common.js";
 import { ClientServices } from "../client.js";
-import {
-    CampaignSchema,
-} from './types.js'
+import { Campaign, CampaignSchema } from './types.js'
 
-export class CampaingListRequest extends Schema.TaggedRequest<CampaingListRequest>()("Campaigns", {
+/**
+ * Request schema for listing campaigns
+ */
+export class CampaignListRequest extends Schema.TaggedRequest<CampaignListRequest>()("Campaigns", {
     failure: Schema.String,
     success: PaginatedResponseSchema(CampaignSchema),
     payload: { url: Schema.Literal("campaigns"), params: Schema.NullishOr(Schema.Any) }
 }) { }
 
+/**
+ * Request schema for retrieving a campaign by ID
+ */
 export class CampaignById extends Schema.TaggedRequest<CampaignById>()("CampaignById", {
     failure: Schema.String,
     success: Schema.Struct({ data: CampaignSchema }),
@@ -20,7 +30,9 @@ export class CampaignById extends Schema.TaggedRequest<CampaignById>()("Campaign
     }
 }) { }
 
-
+/**
+ * Request schema for campaign mutations (create/update)
+ */
 export class CampaignMutation extends Schema.TaggedRequest<CampaignMutation>()("CampaignMutation", {
     failure: Schema.String,
     success: Schema.Struct({ data: CampaignSchema }),
@@ -29,20 +41,33 @@ export class CampaignMutation extends Schema.TaggedRequest<CampaignMutation>()("
     }
 }) { }
 
+/**
+ * Campaign list response schema
+ */
 const CampaignListSchema = PaginatedResponseSchema(CampaignSchema);
-type CampaingList = typeof CampaignListSchema.Type;
+type CampaignList = typeof CampaignListSchema.Type;
 
-export class CampgaignsApiService extends Context.Tag("CampaignsAPI")<
-    CampgaignsApiService,
-    { list: (req: CampaingListRequest) => Effect.Effect<CampaingList, string | ParseError> }
+/**
+ * Service interface for Campaign API operations
+ */
+export class CampaignsApiService extends Context.Tag("CampaignsAPI")<
+    CampaignsApiService,
+    {
+        list: (req: CampaignListRequest) => Effect.Effect<CampaignList, string | ParseError>,
+        getById: (req: CampaignById) => Effect.Effect<{ data: Campaign }, string | ParseError>,
+        update: (req: CampaignMutation) => Effect.Effect<{ data: Campaign }, string | ParseError>
+    }
 >() { }
 
+/**
+ * Live implementation of the Campaign API service
+ */
 export const CampaignsApiLive = Layer.effect(
-    CampgaignsApiService,
+    CampaignsApiService,
     Effect.gen(function* () {
         const client = yield* ClientServices;
         return {
-            list: (req: CampaingListRequest) => {
+            list: (req: CampaignListRequest) => {
                 const task = Effect.request(
                     req,
                     RequestResolver.fromEffect((_) => client.get(req.url, req.params))
@@ -51,9 +76,33 @@ export const CampaignsApiLive = Layer.effect(
                 );
                 return pipe(
                     task,
-                    Effect.annotateLogs("campaigns", "c")
+                    Effect.annotateLogs("campaigns", "list")
                 );
             },
+            getById: (req: CampaignById) => {
+                const task = Effect.request(
+                    req,
+                    RequestResolver.fromEffect((_) => client.get(`campaigns/${req.id}`, undefined))
+                ).pipe(
+                    Effect.tap(Effect.log)
+                );
+                return pipe(
+                    task,
+                    Effect.annotateLogs("campaigns", "getById")
+                );
+            },
+            update: (req: CampaignMutation) => {
+                const task = Effect.request(
+                    req,
+                    RequestResolver.fromEffect((_) => client.patch(`campaigns/${req.data.id}`, req.data, undefined))
+                ).pipe(
+                    Effect.tap(Effect.log)
+                );
+                return pipe(
+                    task,
+                    Effect.annotateLogs("campaigns", "update")
+                );
+            }
         }
     })
 )
