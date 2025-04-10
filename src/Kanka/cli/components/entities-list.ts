@@ -541,20 +541,34 @@ const createEntity = (campaign: Campaign, entityType: EntityType): Effect.Effect
                 ])
             );
 
+            // Process the data before sending
+            const processedData = { ...entityData };
+            if (processedData.image === '') {
+                delete processedData.image; // Remove empty image field to avoid validation issues
+            }
+
             // Create request object
             const createRequest = new EntityCreateRequest({
                 campaignId: mkEntityId(campaign.id),
                 entityType: entityType.toLowerCase() as EntityType,
-                data: entityData
+                data: processedData
             });
 
             // Create entity
             console.log('Creating entity...');
-            const result = yield* entitiesApi.create(createRequest);
+            try {
+                const result = yield* entitiesApi.create(createRequest);
 
-            console.log('Entity created successfully!');
-            console.log(`Name: ${result.data.name}`);
-            console.log(`ID: ${result.data.id}`);
+                console.log('Entity created successfully!');
+                if (result && result.data) {
+                    console.log(`Name: ${result.data.name}`);
+                    console.log(`ID: ${result.data.id}`);
+                }
+            } catch (innerError) {
+                const errorMessage = innerError instanceof Error ? innerError.message : String(innerError);
+                yield* Effect.logError(`Error creating entity: ${errorMessage}`);
+                console.log(`Error creating entity: ${errorMessage}`);
+            }
 
             yield* Effect.promise(() =>
                 inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
@@ -621,21 +635,35 @@ const editEntity = (campaign: Campaign, entity: Entity): Effect.Effect<void, unk
                 ])
             );
 
+            // Process the data before sending
+            const processedData = { ...entityData };
+            if (processedData.image === '') {
+                delete processedData.image; // Remove empty image field to avoid validation issues
+            }
+
             // Create update request
             const updateRequest = new EntityUpdateRequest({
                 campaignId: mkEntityId(campaign.id),
-                // Convert entity type to lowercase to match the EntityTypeSchema
                 entityType: entity.type.toLowerCase() as EntityType,
                 id: mkEntityId(entity.id as number),
-                data: entityData
+                data: processedData
             });
 
             // Update entity
             console.log('Updating entity...');
-            const result = yield* entitiesApi.update(updateRequest);
+            try {
+                const result = yield* entitiesApi.update(updateRequest);
 
-            console.log('Entity updated successfully!');
-            console.log(`Name: ${result.data.name}`);
+                console.log('Entity updated successfully!');
+                if (result && result.data) {
+                    console.log(`Name: ${result.data.name}`);
+                }
+            } catch (innerError) {
+                const errorMessage = innerError instanceof Error ? innerError.message : String(innerError);
+                yield* Effect.logError(`Error updating entity: ${errorMessage}`);
+                console.log(`Error updating entity: ${errorMessage}`);
+                throw innerError; // Re-throw to be caught by outer try-catch
+            }
 
             yield* Effect.promise(() =>
                 inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
