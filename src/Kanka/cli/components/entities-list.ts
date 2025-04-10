@@ -9,7 +9,14 @@ import { Context, Effect } from 'effect';
 import inquirer from 'inquirer';
 import { Campaign } from '../../api/campaigns/types.js';
 import { Entity, EntityType } from '../../api/entities/types.js';
-import { EntitiesApiService, EntityListByTypeRequest, EntityListRequest } from '../../api/entities/entities.js';
+import {
+    EntitiesApiService,
+    EntityListByTypeRequest,
+    EntityListRequest,
+    EntityCreateRequest,
+    EntityUpdateRequest,
+    EntityDeleteRequest
+} from '../../api/entities/entities.js';
 import terminalImage from 'terminal-image';
 import { mkEntityId } from '../../schemas/common.js';
 
@@ -86,34 +93,69 @@ const formatEntityDetails = (entity: Entity): string => {
 /**
  * Display entity details in a modal view
  */
-const displayEntityDetails = (entity: Entity): Effect.Effect<void, never, never> => {
-    return Effect.gen(function* (_) {
-        console.clear();
-        console.log('='.repeat(50));
-        console.log(`ENTITY DETAILS: ${entity.name}`);
-        console.log('='.repeat(50));
-        console.log('');
-        console.log(formatEntityDetails(entity));
-        console.log('');
+const displayEntityDetails = (campaign: Campaign, entity: Entity): Effect.Effect<void, unknown, unknown> => {
+    return Effect.gen(function* (_): Generator<any, void, any> {
+        let exitDetails = false;
 
-        // If entity has an image, render it
-        if (entity.image) {
-            console.log("Loading image...");
+        while (!exitDetails) {
+            console.clear();
+            console.log('='.repeat(50));
+            console.log(`ENTITY DETAILS: ${entity.name}`);
+            console.log('='.repeat(50));
+            console.log('');
+            console.log(formatEntityDetails(entity));
+            console.log('');
 
-            try {
-                const renderedImage = yield* Effect.promise(() => fetchAndRenderImage(entity.image));
-                console.log(renderedImage);
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                console.log(`Could not render image: ${errorMessage}`);
+            // If entity has an image, render it
+            if (entity.image) {
+                console.log("Loading image...");
+
+                try {
+                    const renderedImage = yield* Effect.promise(() => fetchAndRenderImage(entity.image));
+                    console.log(renderedImage);
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    console.log(`Could not render image: ${errorMessage}`);
+                }
+            }
+
+            console.log('-'.repeat(50));
+
+            const { action } = yield* Effect.promise(() =>
+                inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'action',
+                        message: 'Select an action:',
+                        choices: [
+                            { name: 'Back to Entities List', value: 'back' },
+                            { name: 'Edit Entity', value: 'edit' },
+                            { name: 'Delete Entity', value: 'delete' }
+                        ]
+                    }
+                ])
+            );
+
+            switch (action) {
+                case 'back':
+                    exitDetails = true;
+                    break;
+                case 'edit':
+                    yield* editEntity(campaign, entity);
+                    // Refresh entity data after edit
+                    const refreshedEntity = yield* fetchEntityById(campaign, entity.id as number, entity.type);
+                    if (refreshedEntity) {
+                        Object.assign(entity, refreshedEntity);
+                    }
+                    break;
+                case 'delete':
+                    const deleted = yield* deleteEntity(campaign, entity);
+                    if (deleted) {
+                        exitDetails = true;
+                    }
+                    break;
             }
         }
-
-        console.log('-'.repeat(50));
-
-        yield* Effect.promise(() =>
-            inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to return to entities list' }])
-        );
     });
 };
 
@@ -197,7 +239,7 @@ const displayEntitiesByType = (
                     exitList = true;
                 } else {
                     // Display details for selected entity
-                    yield* displayEntityDetails(selection as Entity);
+                    yield* displayEntityDetails(campaign, selection as Entity);
                 }
             }
 
@@ -288,7 +330,7 @@ const displayAllEntities = (campaign: Campaign): Effect.Effect<void, unknown, un
                     exitList = true;
                 } else {
                     // Display details for selected entity
-                    yield* displayEntityDetails(selection as Entity);
+                    yield* displayEntityDetails(campaign, selection as Entity);
                 }
             }
 
@@ -320,7 +362,8 @@ export const displayEntityMenu = (campaign: Campaign): Effect.Effect<void, any, 
             console.log('');
 
             // Create type selection options
-            const entityTypes: Array<{ name: string; value: EntityType | 'all' | 'back' }> = [
+            // Create type selection options
+            const entityTypes: Array<{ name: string; value: EntityType | 'all' | 'back' | 'create' }> = [
                 { name: 'All Entities', value: 'all' },
                 { name: 'Characters', value: 'character' },
                 { name: 'Locations', value: 'location' },
@@ -329,6 +372,7 @@ export const displayEntityMenu = (campaign: Campaign): Effect.Effect<void, any, 
                 { name: 'Organizations', value: 'organization' },
                 { name: 'Notes', value: 'note' },
                 { name: 'Events', value: 'event' },
+                { name: 'Create New Entity', value: 'create' },
                 { name: 'Back to Campaign Dashboard', value: 'back' }
             ];
 
@@ -338,13 +382,12 @@ export const displayEntityMenu = (campaign: Campaign): Effect.Effect<void, any, 
                     {
                         type: 'list',
                         name: 'selection',
-                        message: 'Select an entity type to browse:',
+                        message: 'Select an entity type to browse or create:',
                         choices: entityTypes,
                         pageSize: 15
                     }
                 ])
             );
-
             // Handle selection
             if (selection === 'back') {
                 exitMenu = true;
@@ -352,6 +395,11 @@ export const displayEntityMenu = (campaign: Campaign): Effect.Effect<void, any, 
                 yield* Effect.catchAll(
                     displayAllEntities(campaign),
                     (error) => Effect.logInfo(`Error displaying all entities: ${String(error)}`)
+                );
+            } else if (selection === 'create') {
+                yield* Effect.catchAll(
+                    selectEntityTypeAndCreate(campaign),
+                    (error) => Effect.logInfo(`Error creating entity: ${String(error)}`)
                 );
             } else {
                 yield* Effect.catchAll(
@@ -368,4 +416,297 @@ export const displayEntityMenu = (campaign: Campaign): Effect.Effect<void, any, 
             return Effect.succeed(undefined);
         })
     );
+};
+
+/**
+ * Helper to fetch a single entity by ID and type
+ */
+const fetchEntityById = (
+    campaign: Campaign,
+    entityId: number,
+    entityType: string
+): Effect.Effect<Entity | null, unknown, unknown> => {
+    return Effect.gen(function* (_): Generator<any, Entity | null, any> {
+        const entitiesApi = yield* EntitiesApiService;
+
+        try {
+            if (!entityId || !campaign.id || typeof campaign.id !== 'number') {
+                throw new Error("Campaign ID must be a valid number");
+            }
+
+            const request = new EntityListByTypeRequest({
+                campaignId: mkEntityId(campaign.id),
+                entityType: entityType as EntityType,
+                params: null
+            });
+
+            const response = yield* entitiesApi.listByType(request);
+            const entitiesArray = Array.isArray(response.data) ? response.data : Array.from(response.data || []);
+
+            const entity = entitiesArray.find(e => e.id === entityId);
+            return entity || null;
+        } catch (error) {
+            yield* Effect.logError(`Error fetching entity: ${error}`);
+            return null;
+        }
+    });
+};
+
+/**
+ * Select entity type for creation
+ */
+const selectEntityTypeAndCreate = (campaign: Campaign): Effect.Effect<void, unknown, unknown> => {
+    return Effect.gen(function* (_) {
+        // Clear screen for better UX
+        console.clear();
+        console.log('='.repeat(50));
+        console.log(`CREATE NEW ENTITY - SELECT TYPE`);
+        console.log('='.repeat(50));
+        console.log('');
+
+        // Create entity type options
+        const entityTypes = [
+            { name: 'Character', value: 'character' },
+            { name: 'Location', value: 'location' },
+            { name: 'Item', value: 'item' },
+            { name: 'Family', value: 'family' },
+            { name: 'Organization', value: 'organization' },
+            { name: 'Note', value: 'note' },
+            { name: 'Event', value: 'event' },
+            { name: 'Back to Menu', value: 'back' }
+        ];
+
+        // Get user selection
+        const { selection } = yield* Effect.promise(() =>
+            inquirer.prompt([
+                {
+                    type: 'list',
+                    name: 'selection',
+                    message: 'Select entity type to create:',
+                    choices: entityTypes
+                }
+            ])
+        );
+
+        if (selection !== 'back') {
+            yield* createEntity(campaign, selection as EntityType);
+        }
+    });
+};
+
+/**
+ * Create a new entity
+ */
+const createEntity = (campaign: Campaign, entityType: EntityType): Effect.Effect<void, unknown, unknown> => {
+    return Effect.gen(function* (_) {
+        const entitiesApi = yield* EntitiesApiService;
+
+        try {
+            if (!campaign.id || typeof campaign.id !== 'number') {
+                throw new Error("Campaign ID must be a valid number");
+            }
+
+            // Get entity details from user
+            console.clear();
+            console.log('='.repeat(50));
+            console.log(`CREATE NEW ${entityType.toUpperCase()}`);
+            console.log('='.repeat(50));
+            console.log('');
+
+            // Collect entity information
+            const entityData = yield* Effect.promise(() =>
+                inquirer.prompt([
+                    {
+                        type: 'input',
+                        name: 'name',
+                        message: 'Entity name:',
+                        validate: (input) => input.length > 0 ? true : 'Name is required'
+                    },
+                    {
+                        type: 'editor',
+                        name: 'entry',
+                        message: 'Entity description (press ctrl+s to save, ESC to cancel):',
+                    },
+                    {
+                        type: 'input',
+                        name: 'image',
+                        message: 'Image URL (optional):',
+                    },
+                    {
+                        type: 'confirm',
+                        name: 'is_private',
+                        message: 'Make this entity private?',
+                        default: false
+                    }
+                ])
+            );
+
+            // Create request object
+            const createRequest = new EntityCreateRequest({
+                campaignId: mkEntityId(campaign.id),
+                entityType: entityType,
+                data: entityData
+            });
+
+            // Create entity
+            console.log('Creating entity...');
+            const result = yield* entitiesApi.create(createRequest);
+
+            console.log('Entity created successfully!');
+            console.log(`Name: ${result.data.name}`);
+            console.log(`ID: ${result.data.id}`);
+
+            yield* Effect.promise(() =>
+                inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
+            );
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            yield* Effect.logError(`Error creating entity: ${errorMessage}`);
+            console.log(`Error creating entity: ${errorMessage}`);
+
+            yield* Effect.promise(() =>
+                inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
+            );
+        }
+    });
+};
+
+/**
+ * Edit an existing entity
+ */
+const editEntity = (campaign: Campaign, entity: Entity): Effect.Effect<void, unknown, unknown> => {
+    return Effect.gen(function* (_) {
+        const entitiesApi = yield* EntitiesApiService;
+
+        try {
+            if (!campaign.id || typeof campaign.id !== 'number') {
+                throw new Error("Campaign ID must be a valid number");
+            }
+
+            // Show edit form
+            console.clear();
+            console.log('='.repeat(50));
+            console.log(`EDIT ${entity.type.toUpperCase()}: ${entity.name}`);
+            console.log('='.repeat(50));
+            console.log('');
+
+            // Collect updated entity information
+            const entityData = yield* Effect.promise(() =>
+                inquirer.prompt([
+                    {
+                        type: 'input',
+                        name: 'name',
+                        message: 'Entity name:',
+                        default: entity.name,
+                        validate: (input) => input.length > 0 ? true : 'Name is required'
+                    },
+                    {
+                        type: 'editor',
+                        name: 'entry',
+                        message: 'Entity description (press ctrl+s to save, ESC to cancel):',
+                        default: entity.entry || ''
+                    },
+                    {
+                        type: 'input',
+                        name: 'image',
+                        message: 'Image URL (optional):',
+                        default: entity.image || ''
+                    },
+                    {
+                        type: 'confirm',
+                        name: 'is_private',
+                        message: 'Make this entity private?',
+                        default: entity.is_private || false
+                    }
+                ])
+            );
+
+            // Create update request
+            const updateRequest = new EntityUpdateRequest({
+                campaignId: mkEntityId(campaign.id),
+                entityType: entity.type as EntityType,
+                id: mkEntityId(entity.id as number),
+                data: entityData
+            });
+
+            // Update entity
+            console.log('Updating entity...');
+            const result = yield* entitiesApi.update(updateRequest);
+
+            console.log('Entity updated successfully!');
+            console.log(`Name: ${result.data.name}`);
+
+            yield* Effect.promise(() =>
+                inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
+            );
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            yield* Effect.logError(`Error updating entity: ${errorMessage}`);
+            console.log(`Error updating entity: ${errorMessage}`);
+
+            yield* Effect.promise(() =>
+                inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
+            );
+        }
+    });
+};
+
+/**
+ * Delete an entity
+ */
+const deleteEntity = (campaign: Campaign, entity: Entity): Effect.Effect<boolean, unknown, unknown> => {
+    return Effect.gen(function* (_) {
+        const entitiesApi = yield* EntitiesApiService;
+
+        try {
+            if (!campaign.id || typeof campaign.id !== 'number') {
+                throw new Error("Campaign ID must be a valid number");
+            }
+
+            // Confirm deletion
+            const { confirm } = yield* Effect.promise(() =>
+                inquirer.prompt([
+                    {
+                        type: 'confirm',
+                        name: 'confirm',
+                        message: `Are you sure you want to delete ${entity.name}? This cannot be undone.`,
+                        default: false
+                    }
+                ])
+            );
+
+            if (!confirm) {
+                return false;
+            }
+
+            // Create delete request
+            const deleteRequest = new EntityDeleteRequest({
+                campaignId: mkEntityId(campaign.id),
+                entityType: entity.type as EntityType,
+                id: mkEntityId(entity.id as number)
+            });
+
+            // Delete entity
+            console.log('Deleting entity...');
+            yield* entitiesApi.delete(deleteRequest);
+
+            console.log('Entity deleted successfully!');
+
+            yield* Effect.promise(() =>
+                inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
+            );
+
+            return true;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            yield* Effect.logError(`Error deleting entity: ${errorMessage}`);
+            console.log(`Error deleting entity: ${errorMessage}`);
+
+            yield* Effect.promise(() =>
+                inquirer.prompt([{ type: 'input', name: 'continue', message: 'Press Enter to continue' }])
+            );
+
+            return false;
+        }
+    });
 };
