@@ -178,7 +178,7 @@ const displayEntitiesByType = (
             // Create request for entities by type
             const request = new EntityListByTypeRequest({
                 campaignId: mkEntityId(campaign.id),
-                entityType: entityType,
+                entityType: entityType.toLowerCase() as EntityType,
                 params: null
             });
 
@@ -436,7 +436,7 @@ const fetchEntityById = (
 
             const request = new EntityListByTypeRequest({
                 campaignId: mkEntityId(campaign.id),
-                entityType: entityType as EntityType,
+                entityType: entityType.toLowerCase() as EntityType,
                 params: null
             });
 
@@ -544,7 +544,7 @@ const createEntity = (campaign: Campaign, entityType: EntityType): Effect.Effect
             // Create request object
             const createRequest = new EntityCreateRequest({
                 campaignId: mkEntityId(campaign.id),
-                entityType: entityType,
+                entityType: entityType.toLowerCase() as EntityType,
                 data: entityData
             });
 
@@ -624,7 +624,8 @@ const editEntity = (campaign: Campaign, entity: Entity): Effect.Effect<void, unk
             // Create update request
             const updateRequest = new EntityUpdateRequest({
                 campaignId: mkEntityId(campaign.id),
-                entityType: entity.type as EntityType,
+                // Convert entity type to lowercase to match the EntityTypeSchema
+                entityType: entity.type.toLowerCase() as EntityType,
                 id: mkEntityId(entity.id as number),
                 data: entityData
             });
@@ -682,7 +683,7 @@ const deleteEntity = (campaign: Campaign, entity: Entity): Effect.Effect<boolean
             // Create delete request
             const deleteRequest = new EntityDeleteRequest({
                 campaignId: mkEntityId(campaign.id),
-                entityType: entity.type as EntityType,
+                entityType: entity.type.toLowerCase() as EntityType,
                 id: mkEntityId(entity.id as number)
             });
 
